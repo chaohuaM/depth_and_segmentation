@@ -183,8 +183,7 @@ def show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes, 
 
     with open(os.path.join(miou_out_path, "confusion_matrix.csv"), 'w', newline='') as f:
         writer = csv.writer(f)
-        writer_list = []
-        writer_list.append([' '] + [str(c) for c in name_classes])
+        writer_list = [[' '] + [str(c) for c in name_classes]]
         for i in range(len(hist)):
             writer_list.append([name_classes[i]] + [str(x) for x in hist[i]])
         writer.writerows(writer_list)

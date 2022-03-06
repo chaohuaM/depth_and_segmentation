@@ -1,5 +1,5 @@
 import torch
-from losses.loss import CE_Loss, Dice_loss, Focal_Loss
+from losses.semantic_loss import CE_Loss, Dice_loss, Focal_Loss
 from losses.grad_loss import GRAD_LOSS
 from tqdm import tqdm
 
@@ -69,6 +69,7 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
             total_f_score += _f_score.item()
 
             pbar.set_postfix(**{'total_loss': total_loss / (iteration + 1),
+                                'depth_loss': depth_loss.item() / (iteration + 1),
                                 'f_score': total_f_score / (iteration + 1),
                                 'lr': get_lr(optimizer)})
             pbar.update(1)
@@ -119,6 +120,7 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
                 val_f_score += _f_score.item()
 
             pbar.set_postfix(**{'total_loss': val_loss / (iteration + 1),
+                                'depth_loss': depth_loss.item() / (iteration + 1),
                                 'f_score': val_f_score / (iteration + 1),
                                 'lr': get_lr(optimizer)})
             pbar.update(1)

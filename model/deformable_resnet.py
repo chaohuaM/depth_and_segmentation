@@ -236,7 +236,7 @@ def resnet50(pretrained=True, deformable_mode=True, **kwargs):
     else:
         model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        assert kwargs['in_channels'] == 3, 'in_channels must be 3 whem pretrained is True'
+        assert kwargs['in_channels'] == 3, 'in_channels must be 3 when pretrained is True'
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
     return model
 
