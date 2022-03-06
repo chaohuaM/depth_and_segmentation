@@ -35,6 +35,7 @@ def image_level_transform(img_items, flip_flag, jitter, size):
     for img_item in img_items:
 
         new_img_item = np.zeros_like(img_item)
+        new_img_item = cv2.resize(new_img_item, (w, h))
         img_item = cv2.resize(img_item, (nw, nh))
 
         if flip_flag:
@@ -44,7 +45,7 @@ def image_level_transform(img_items, flip_flag, jitter, size):
         transform_item = paste_image(img_item, new_img_item, dx, dy)
         transform_items.append(transform_item)
 
-        return transform_items
+    return transform_items
 
 
 def pixel_level_distort(image, hue, sat, val):
@@ -109,6 +110,7 @@ class RockDataset(Dataset):
         #   数据增强
         # -------------------------------#
         x_img, y_label, depth_img = self._get_random_data(x_img, y_label, depth_img)
+
 
         x_img = np.transpose(preprocess_input(np.array(x_img, np.float64)), [2, 0, 1])
         y_label = np.array(y_label)

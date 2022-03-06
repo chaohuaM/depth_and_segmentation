@@ -90,11 +90,10 @@ def paste_image(front, back, h0, w0):
     :param w0: 粘贴点左上角y坐标，对应列
     :return:
     """
-    ih = front.shape[0]
-    iw = front.shape[1]
-    h1 = min(h0 + ih, back.shape[0])
-    w1 = min(w0 + iw, back.shape[1])
+    front = Image.fromarray(front)
+    back = Image.fromarray(back)
 
-    back[h0:h1, w0:w1] = front
+    back.paste(front, (h0, w0))
+    back = np.array(back)
 
     return back

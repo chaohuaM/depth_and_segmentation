@@ -23,13 +23,13 @@ class unetUp(nn.Module):
 
 
 class Unet(nn.Module):
-    def __init__(self, num_classes=2, pretrained=False, backbone='vgg', deformable_mode=False):
+    def __init__(self, in_channels=3, num_classes=2, pretrained=False, backbone='vgg', deformable_mode=False):
         super(Unet, self).__init__()
         if backbone == 'vgg':
-            self.vgg = VGG16(pretrained=pretrained)
+            self.vgg = VGG16(in_channels=3, pretrained=pretrained)
             in_filters = [192, 384, 768, 1024]
         elif backbone == "resnet50":
-            self.resnet = resnet50(pretrained=pretrained, deformable_mode=deformable_mode)
+            self.resnet = resnet50(in_channels=3, pretrained=pretrained, deformable_mode=deformable_mode)
             in_filters = [192, 512, 1024, 3072]
         else:
             raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
@@ -112,3 +112,25 @@ class Unet(nn.Module):
         elif self.backbone == "resnet50":
             for param in self.resnet.parameters():
                 param.requires_grad = True
+
+
+def weights_init(net, init_type='normal', init_gain=0.02):
+    def init_func(m):
+        classname = m.__class__.__name__
+        if hasattr(m, 'weight') and classname.find('Conv') != -1:
+            if init_type == 'normal':
+                torch.nn.init.normal_(m.weight.data, 0.0, init_gain)
+            elif init_type == 'xavier':
+                torch.nn.init.xavier_normal_(m.weight.data, gain=init_gain)
+            elif init_type == 'kaiming':
+                torch.nn.init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+            elif init_type == 'orthogonal':
+                torch.nn.init.orthogonal_(m.weight.data, gain=init_gain)
+            else:
+                raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
+        elif classname.find('BatchNorm2d') != -1:
+            torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+            torch.nn.init.constant_(m.bias.data, 0.0)
+
+    print('initialize network with %s type' % init_type)
+    net.apply(init_func)

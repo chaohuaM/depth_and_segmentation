@@ -81,19 +81,22 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
         for iteration, batch in enumerate(gen_val):
             if iteration >= epoch_step_val:
                 break
-            imgs, pngs, labels = batch
+            imgs, pngs, labels, depths = batch
             with torch.no_grad():
                 imgs = torch.from_numpy(imgs).type(torch.FloatTensor)
                 pngs = torch.from_numpy(pngs).long()
                 labels = torch.from_numpy(labels).type(torch.FloatTensor)
+                depths = torch.from_numpy(depths).type(torch.FloatTensor)
+                depths = torch.unsqueeze(depths, 1)
                 weights = torch.from_numpy(cls_weights)
                 if cuda:
                     imgs = imgs.cuda()
                     pngs = pngs.cuda()
                     labels = labels.cuda()
+                    depths = depths.cuda()
                     weights = weights.cuda()
 
-                sem_outputs = model_train(imgs)
+                sem_outputs, depth_outputs = model_train(imgs)
                 if focal_loss:
                     sem_loss = Focal_Loss(sem_outputs, pngs, weights, num_classes=num_classes)
                 else:
@@ -107,7 +110,12 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
                 # -------------------------------#
                 _f_score = f_score(sem_outputs, labels)
 
-                val_loss += sem_loss.item()
+                # 深度值损失部分
+                depth_loss = GRAD_LOSS(depths, depth_outputs)
+
+                loss = sem_loss + depth_loss
+
+                val_loss += loss.item()
                 val_f_score += _f_score.item()
 
             pbar.set_postfix(**{'total_loss': val_loss / (iteration + 1),
