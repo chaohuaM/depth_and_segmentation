@@ -52,7 +52,7 @@ class DistributionLogLoss(nn.Module):
         return torch.sum(loss) / count
 
 
-class RMSLoss(nn.Module):
+class RMSELoss(nn.Module):
     def forward(self, input, target, mask=None):
         loss = torch.pow(input - target, 2)
         loss, count = _mask_input(loss, mask)

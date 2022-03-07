@@ -1,4 +1,5 @@
 import os
+import datetime
 
 import numpy as np
 import torch
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     # ------------------------------#
     #   输入图片的大小
     # ------------------------------#
-    input_shape = [256, 256]
+    input_shape = [512, 512]
 
     # ----------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     # ----------------------------------------------------#
     Init_Epoch = 0
     Freeze_Epoch = 50
-    Freeze_batch_size = 2
+    Freeze_batch_size = 1
     Freeze_lr = 1e-4
     # ----------------------------------------------------#
     #   解冻阶段训练参数
@@ -119,7 +120,7 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------#
     #   是否使用focal loss来防止正负样本不平衡
     # ---------------------------------------------------------------------#
-    focal_loss = False
+    focal_loss = True
     # ---------------------------------------------------------------------#
     #   是否给不同种类赋予不同的损失权值，默认是平衡的。
     #   设置的话，注意设置成numpy形式的，长度和num_classes一样。
@@ -160,7 +161,8 @@ if __name__ == "__main__":
         cudnn.benchmark = True
         model_train = model_train.cuda()
 
-    loss_history = LossHistory("logs/")
+    time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S')
+    loss_history = LossHistory("logs/", time_str)
 
     # ---------------------------#
     #   读取数据集对应的txt

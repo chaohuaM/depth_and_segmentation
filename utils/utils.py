@@ -33,12 +33,13 @@ def load_exr(image_path):
 
 #   对输入图像进行resize
 # ---------------------------------------------------#
-def resize_image(image, size):
+def resize_and_centered(image, size, reversed=False):
     """
     将图像进行按比例缩放，若小于size，则复制在图像中心
+    :param reversed: 使用时是否为变换为原图尺寸
     :param image: ndarray 原图
     :param size: [int, int] [height, width] [rows, cols]
-    :return: resize_image, ndarray
+    :return: resize image and place to the center, ndarray
     """
 
     ih = image.shape[0]
@@ -46,6 +47,9 @@ def resize_image(image, size):
     # 若等于原图大小，直接返回image
     if [ih, iw] == size:
         return image
+
+    if reversed:
+        return restore_image_size(image, size)
 
     h, w = size
     if len(image.shape) == 3:
@@ -86,14 +90,43 @@ def paste_image(front, back, h0, w0):
     粘贴图片，超出范围也可以
     :param front: 前景
     :param back: 背景
-    :param h0: 粘贴点左上角x坐标，对应行
-    :param w0: 粘贴点左上角y坐标，对应列
+    :param h0: 粘贴点左上角坐标，对应行
+    :param w0: 粘贴点左上角坐标，对应列
     :return:
     """
     front = Image.fromarray(front)
     back = Image.fromarray(back)
 
-    back.paste(front, (h0, w0))
+    back.paste(front, (w0, h0))
     back = np.array(back)
 
     return back
+
+
+def normalization(data):
+    mi = np.min(data)
+    ma = np.max(data)
+    _range = ma - mi
+    return (data - mi) / _range
+
+
+def restore_image_size(image, original_size):
+    h = image.shape[0]
+    w = image.shape[1]
+    # 若等于原图大小，直接返回image
+    if [h, w] == original_size:
+        return image
+
+    ih, iw = original_size
+
+    scale = min(w / iw, h / ih)
+    nw = int(iw * scale)
+    nh = int(ih * scale)
+
+    h0 = (h - nh) // 2
+    w0 = (w - nw) // 2
+
+    new_image = image[h0:h0 + nh, w0:w0 + nw]
+    new_image = cv2.resize(new_image, (iw, ih), interpolation=cv2.INTER_LINEAR)
+
+    return new_image

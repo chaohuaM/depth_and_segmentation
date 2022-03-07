@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from torch.utils.data.dataset import Dataset
 
-from utils.utils import preprocess_input, load_exr, resize_image, paste_image
+from utils.utils import preprocess_input, load_exr, resize_and_centered, paste_image
 
 
 def rand(a=0, b=1):
@@ -131,9 +131,9 @@ class RockDataset(Dataset):
         h, w = self.input_shape
 
         if not self.transform:
-            new_image = resize_image(image, [h, w])
-            new_label = resize_image(label, [h, w])
-            new_depth = resize_image(depth, [h, w])
+            new_image = resize_and_centered(image, [h, w])
+            new_label = resize_and_centered(label, [h, w])
+            new_depth = resize_and_centered(depth, [h, w])
             return new_image, new_label, new_depth
 
         # 是否翻转

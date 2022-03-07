@@ -4,10 +4,9 @@ import scipy.signal
 from matplotlib import pyplot as plt
 
 
-class LossHistory():
-    def __init__(self, log_dir, val_loss_flag=True):
-        import datetime
-        self.time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S')
+class LossHistory:
+    def __init__(self, log_dir, time_str, val_loss_flag=True):
+        self.time_str = time_str
         self.save_path = os.path.join(log_dir, "loss_" + str(self.time_str))
         self.val_loss_flag = val_loss_flag
 
