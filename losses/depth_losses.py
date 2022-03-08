@@ -36,5 +36,30 @@ def GRAD_LOSS(z, z_fake):
     return torch.mean(torch.abs(grad_real - grad_fake))
 
 
+def _mask_input(input, mask=None):
+    if mask is not None:
+        input = input * mask
+        count = torch.sum(mask).data[0]
+    else:
+        count = np.prod(input.size(), dtype=np.float32).item()
+    return input, count
+
+
+def BerHu_Loss(z, z_fake, mask=None):
+    x = z_fake - z
+    abs_x = torch.abs(x)
+    c = torch.max(abs_x).item() / 5.0
+    leq = (abs_x <= c).float()
+    l2_losses = (x ** 2 + c ** 2) / (2 * c)
+    losses = leq * abs_x + (1 - leq) * l2_losses
+    losses, count = _mask_input(losses, mask)
+    return torch.sum(losses) / count
+
+
+
+
+
+
+
 
 

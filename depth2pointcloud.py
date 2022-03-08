@@ -16,11 +16,11 @@ class point_cloud_generator:
         self.pc_file = None
 
     @property
-    def width(self):
+    def height(self):
         return self.rgb.shape[0]
 
     @property
-    def height(self):
+    def width(self):
         return self.rgb.shape[1]
 
     def calculate(self):
@@ -85,19 +85,19 @@ class point_cloud_generator:
 
 if __name__ == '__main__':
 
-    rgb_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/0263sensorRight_rgb_00.png'
-    depth_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59//depth_exr/0263sensorRight_pinhole_depth_00.exr'
+    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_semantic_label_01.png'
+    depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_pinhole_depth_00.exr'
     # a = point_cloud_generator(rgb_path, depth_path, 'pc1.ply',
     #                           focal_length=13.11, scalingfactor=1)
 
-    a = point_cloud_generator(focal_length=13.11, scalingfactor=1.0)
+    a = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
     rgb = cv2.imread(rgb_path)
-    rgb = cv2.resize(rgb, (2048, 2048))
+    # rgb = cv2.resize(rgb, (2048, 2048))
 
     a.rgb = rgb
 
     depth = load_exr(depth_path)
-    depth = cv2.resize(depth, (2048, 2048))
+    # depth = cv2.resize(depth, (2048, 2048))
     a.depth = depth
 
     a.calculate()

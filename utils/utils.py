@@ -33,10 +33,10 @@ def load_exr(image_path):
 
 #   对输入图像进行resize
 # ---------------------------------------------------#
-def resize_and_centered(image, size, reversed=False):
+def resize_and_centered(image, size, reverse=False):
     """
     将图像进行按比例缩放，若小于size，则复制在图像中心
-    :param reversed: 使用时是否为变换为原图尺寸
+    :param reverse: 使用时是否为变换为原图尺寸
     :param image: ndarray 原图
     :param size: [int, int] [height, width] [rows, cols]
     :return: resize image and place to the center, ndarray
@@ -48,7 +48,7 @@ def resize_and_centered(image, size, reversed=False):
     if [ih, iw] == size:
         return image
 
-    if reversed:
+    if reverse:
         return restore_image_size(image, size)
 
     h, w = size

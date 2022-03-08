@@ -1,6 +1,6 @@
 import torch
-from losses.semantic_loss import CE_Loss, Dice_loss, Focal_Loss
-from losses.grad_loss import GRAD_LOSS
+from losses.semantic_losses import CE_Loss, Dice_loss, Focal_Loss
+from losses.depth_losses import GRAD_LOSS, BerHu_Loss
 from tqdm import tqdm
 
 from utils.utils import get_lr
@@ -58,9 +58,14 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
                 _f_score = f_score(sem_outputs, labels)
 
             # 深度值损失部分
-            depth_loss = GRAD_LOSS(depths, depth_outputs)
+            d1_loss = BerHu_Loss(depths, depth_outputs)
+            d2_loss = GRAD_LOSS(depths, depth_outputs)
 
-            loss = sem_loss + depth_loss
+            depth_loss = d1_loss + d2_loss
+
+            d_factor = 10.0
+
+            loss = sem_loss + d_factor * depth_loss
 
             loss.backward()
             optimizer.step()
@@ -129,7 +134,7 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
     print('Finish Validation')
     print('Epoch:' + str(epoch + 1) + '/' + str(Epoch))
     print('Total Loss: %.3f || Val Loss: %.3f ' % (total_loss / (epoch_step + 1), val_loss / (epoch_step_val + 1)))
-    torch.save(model.state_dict(), loss_history.savepath + '/ep%03d-losses%.3f-val_loss%.3f.pth' % (
+    torch.save(model.state_dict(), loss_history.save_path + '/ep%03d-losses%.3f-val_loss%.3f.pth' % (
         (epoch + 1), total_loss / (epoch_step + 1), val_loss / (epoch_step_val + 1)))
 
 

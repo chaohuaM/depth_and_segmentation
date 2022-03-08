@@ -7,7 +7,7 @@ from utils.utils import resize_and_centered, preprocess_input, normalization
 from depth2pointcloud import point_cloud_generator
 
 
-model_path = 'logs/ep100-losses0.602-val_loss0.695.pth'
+model_path = 'logs/loss_2022_03_06_17_39_34/ep100-losses0.602-val_loss0.695.pth'
 model = Unet(backbone='resnet50', deformable_mode=False)
 input_shape = [256, 256]
 model.load_state_dict(torch.load(model_path, map_location='cuda'))
@@ -33,30 +33,35 @@ with torch.no_grad():
     pr_depth = depth_img[0][0]
 
     pr_seg = F.softmax(pr_seg.permute(1, 2, 0), dim=-1).cpu().numpy()
-    pr_seg = resize_and_centered(pr_seg, (original_h, original_w), reversed=True)
+    pr_seg = resize_and_centered(pr_seg, (original_h, original_w), reverse=True)
 
     pr_seg = pr_seg.argmax(axis=-1) * 255
+    pr_seg[pr_seg > 125] = 225
+    pr_seg[pr_seg < 125] = 50
+
+    pr_seg = cv2.cvtColor(pr_seg.astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
     pr_depth = pr_depth.cpu().numpy()
 
-    pr_depth = normalization(pr_depth) * 255
+    # pr_depth = normalization(pr_depth) * 255
+    pr_depth[pr_depth <= 1e-4] = 0.0
 
-    pr_depth = resize_and_centered(pr_depth, (original_h, original_w), reversed=True)
+    pr_depth = resize_and_centered(pr_depth, (original_h, original_w), reverse=True)
 
 
 # 深度图到点云生成
-# pc = point_cloud_generator(focal_length=13.11, scalingfactor=1.0)
-#
-# pc.rgb = img
-# pc.depth = pr_depth
-# pc.calculate()
-# pc.write_ply('pc1.ply')
-# pc.show_point_cloud()
+pc = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
+
+pc.rgb = pr_seg
+pc.depth = pr_depth
+pc.calculate()
+pc.write_ply('pc1.ply')
+pc.show_point_cloud()
 
 # cv2.imshow('seg', pr_seg.astype(np.uint8))
 # cv2.waitKey(100)
 #
-cv2.imshow('depth', pr_depth.astype(np.uint8))
-cv2.waitKey()
+# cv2.imshow('depth', pr_depth.astype(np.uint8))
+# cv2.waitKey()
 
 

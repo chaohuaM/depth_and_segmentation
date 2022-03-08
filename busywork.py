@@ -71,9 +71,9 @@ right_exr_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/depth_ex
 left_depth = load_exr(left_exr_path)
 right_depth = load_exr(right_exr_path)
 
-# np.seterr(divide='ignore', invalid='ignore')
-# left_disparity = 2382.82 * 270 / (left_depth * 1000)
-# right_disparity = 2382.82 * 270 / (right_depth * 1000)
+np.seterr(divide='ignore', invalid='ignore')
+left_disparity = 595.60 * 270 / (left_depth * 1000)
+right_disparity = 595.90 * 270 / (right_depth * 1000)
 
 
 # import torch.onnx
