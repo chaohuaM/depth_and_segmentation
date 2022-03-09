@@ -5,16 +5,17 @@ from matplotlib import pyplot as plt
 
 
 class LossHistory:
-    def __init__(self, log_dir, time_str, val_loss_flag=True):
-        self.time_str = time_str
-        self.save_path = os.path.join(log_dir, "loss_" + str(self.time_str))
+    def __init__(self, log_dir, val_loss_flag=True):
+        self.time_str = log_dir.split('/')[-1]
+        self.save_path = log_dir
         self.val_loss_flag = val_loss_flag
 
         self.losses = []
         if self.val_loss_flag:
             self.val_loss = []
 
-        os.makedirs(self.save_path)
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
 
     def append_loss(self, loss, val_loss=0):
         self.losses.append(loss)

@@ -1,4 +1,5 @@
 import torch
+import os
 from losses.semantic_losses import CE_Loss, Dice_loss, Focal_Loss
 from losses.depth_losses import GRAD_LOSS, BerHu_Loss
 from tqdm import tqdm
@@ -63,9 +64,9 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
 
             depth_loss = d1_loss + d2_loss
 
-            d_factor = 10.0
+            # d_factor = 10.0
 
-            loss = sem_loss + d_factor * depth_loss
+            loss = sem_loss + depth_loss
 
             loss.backward()
             optimizer.step()
@@ -117,7 +118,12 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
                 _f_score = f_score(sem_outputs, labels)
 
                 # 深度值损失部分
-                depth_loss = GRAD_LOSS(depths, depth_outputs)
+                d1_loss = BerHu_Loss(depths, depth_outputs)
+                d2_loss = GRAD_LOSS(depths, depth_outputs)
+
+                depth_loss = d1_loss + d2_loss
+
+                # d_factor = 10.0
 
                 loss = sem_loss + depth_loss
 
@@ -134,76 +140,81 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
     print('Finish Validation')
     print('Epoch:' + str(epoch + 1) + '/' + str(Epoch))
     print('Total Loss: %.3f || Val Loss: %.3f ' % (total_loss / (epoch_step + 1), val_loss / (epoch_step_val + 1)))
-    torch.save(model.state_dict(), loss_history.save_path + '/ep%03d-losses%.3f-val_loss%.3f.pth' % (
-        (epoch + 1), total_loss / (epoch_step + 1), val_loss / (epoch_step_val + 1)))
+
+    # SAVE MODEL
+    if not (epoch + 1) % 10:
+        torch.save(model.state_dict(), os.path.join(loss_history.save_path, 'ep%03d.pth' % (epoch + 1)))
 
 
-def fit_one_epoch_no_val(model_train, model, loss_history, optimizer, epoch, epoch_step, gen, Epoch, cuda, dice_loss,
-                         focal_loss, cls_weights, num_classes):
-    total_loss = 0
-    total_f_score = 0
-
-    print('Start Train')
-    with tqdm(total=epoch_step, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
-        for iteration, batch in enumerate(gen):
-            if iteration >= epoch_step:
-                break
-            imgs, pngs, labels, depths = batch
-
-            with torch.no_grad():
-                imgs = torch.from_numpy(imgs).type(torch.FloatTensor)
-                pngs = torch.from_numpy(pngs).long()
-                labels = torch.from_numpy(labels).type(torch.FloatTensor)
-                depths = torch.from_numpy(depths).type(torch.FloatTensor)
-                depths = torch.unsqueeze(depths, 1)
-                weights = torch.from_numpy(cls_weights)
-                if cuda:
-                    imgs = imgs.cuda()
-                    pngs = pngs.cuda()
-                    labels = labels.cuda()
-                    depths = depths.cuda()
-                    weights = weights.cuda()
-
-            optimizer.zero_grad()
-
-            sem_outputs, depth_outputs = model_train(imgs)
-
-            # 语义分割部分的损失项计算
-            if focal_loss:
-                sem_loss = Focal_Loss(sem_outputs, pngs, weights, num_classes=num_classes)
-            else:
-                sem_loss = CE_Loss(sem_outputs, pngs, weights, num_classes=num_classes)
-
-            if dice_loss:
-                main_dice = Dice_loss(sem_outputs, labels)
-                sem_loss = sem_loss + main_dice
-
-            with torch.no_grad():
-                # -------------------------------#
-                #   计算f_score
-                # -------------------------------#
-                _f_score = f_score(sem_outputs, labels)
-
-            # 深度值损失部分
-            depth_loss = GRAD_LOSS(depths, depth_outputs)
-
-            loss = sem_loss + depth_loss
-
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-            total_f_score += _f_score.item()
-
-            pbar.set_postfix(**{'total_loss': total_loss / (iteration + 1),
-                                'f_score': total_f_score / (iteration + 1),
-                                'lr': get_lr(optimizer)})
-            pbar.update(1)
-
-    print('Finish Train')
-
-    loss_history.append_loss(total_loss / (epoch_step + 1))
-    print('Finish Validation')
-    print('Epoch:' + str(epoch + 1) + '/' + str(Epoch))
-    print('Total Loss: %.3f' % (total_loss / (epoch_step + 1)))
-    torch.save(model.state_dict(), 'logs/ep%03d-loss%.3f.pth' % ((epoch + 1), total_loss / (epoch_step + 1)))
+# def fit_one_epoch_no_val(model_train, model, loss_history, optimizer, epoch, epoch_step, gen, Epoch, cuda, dice_loss,
+#                          focal_loss, cls_weights, num_classes):
+#     total_loss = 0
+#     total_f_score = 0
+#
+#     print('Start Train')
+#     with tqdm(total=epoch_step, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
+#         for iteration, batch in enumerate(gen):
+#             if iteration >= epoch_step:
+#                 break
+#             imgs, pngs, labels, depths = batch
+#
+#             with torch.no_grad():
+#                 imgs = torch.from_numpy(imgs).type(torch.FloatTensor)
+#                 pngs = torch.from_numpy(pngs).long()
+#                 labels = torch.from_numpy(labels).type(torch.FloatTensor)
+#                 depths = torch.from_numpy(depths).type(torch.FloatTensor)
+#                 depths = torch.unsqueeze(depths, 1)
+#                 weights = torch.from_numpy(cls_weights)
+#                 if cuda:
+#                     imgs = imgs.cuda()
+#                     pngs = pngs.cuda()
+#                     labels = labels.cuda()
+#                     depths = depths.cuda()
+#                     weights = weights.cuda()
+#
+#             optimizer.zero_grad()
+#
+#             sem_outputs, depth_outputs = model_train(imgs)
+#
+#             # 语义分割部分的损失项计算
+#             if focal_loss:
+#                 sem_loss = Focal_Loss(sem_outputs, pngs, weights, num_classes=num_classes)
+#             else:
+#                 sem_loss = CE_Loss(sem_outputs, pngs, weights, num_classes=num_classes)
+#
+#             if dice_loss:
+#                 main_dice = Dice_loss(sem_outputs, labels)
+#                 sem_loss = sem_loss + main_dice
+#
+#             with torch.no_grad():
+#                 # -------------------------------#
+#                 #   计算f_score
+#                 # -------------------------------#
+#                 _f_score = f_score(sem_outputs, labels)
+#
+#             # 深度值损失部分
+#             depth_loss = GRAD_LOSS(depths, depth_outputs)
+#
+#             loss = sem_loss + depth_loss
+#
+#             loss.backward()
+#             optimizer.step()
+#
+#             total_loss += loss.item()
+#             total_f_score += _f_score.item()
+#
+#             pbar.set_postfix(**{'total_loss': total_loss / (iteration + 1),
+#                                 'f_score': total_f_score / (iteration + 1),
+#                                 'lr': get_lr(optimizer)})
+#             pbar.update(1)
+#
+#     print('Finish Train')
+#
+#     loss_history.append_loss(total_loss / (epoch_step + 1))
+#     print('Finish Validation')
+#     print('Epoch:' + str(epoch + 1) + '/' + str(Epoch))
+#     print('Total Loss: %.3f' % (total_loss / (epoch_step + 1)))
+#
+#     # SAVE MODEL
+#     if not (epoch + 1) % 10:
+#         torch.save(model.state_dict(), os.path.join(loss_history.save_path, 'ep%03d.pth' % (epoch + 1)))

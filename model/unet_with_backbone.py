@@ -26,10 +26,10 @@ class Unet(nn.Module):
     def __init__(self, in_channels=3, num_classes=2, pretrained=False, backbone='vgg', deformable_mode=False):
         super(Unet, self).__init__()
         if backbone == 'vgg':
-            self.vgg = VGG16(in_channels=3, pretrained=pretrained)
+            self.vgg = VGG16(in_channels=in_channels, pretrained=pretrained)
             in_filters = [192, 384, 768, 1024]
         elif backbone == "resnet50":
-            self.resnet = resnet50(in_channels=3, pretrained=pretrained, deformable_mode=deformable_mode)
+            self.resnet = resnet50(in_channels=in_channels, pretrained=pretrained, deformable_mode=deformable_mode)
             in_filters = [192, 512, 1024, 3072]
         else:
             raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))

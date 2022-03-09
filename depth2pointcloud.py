@@ -42,9 +42,9 @@ class point_cloud_generator:
         df[1] = -self.Y.T.reshape(-1)
         df[2] = -self.Z.T.reshape(-1)
         img = np.array(self.rgb)
-        df[3] = img[:, :, 0:1].reshape(-1)
-        df[4] = img[:, :, 1:2].reshape(-1)
-        df[5] = img[:, :, 2:3].reshape(-1)
+        df[3] = img[:, :, 0].reshape(-1)
+        df[4] = img[:, :, 1].reshape(-1)
+        df[5] = img[:, :, 2].reshape(-1)
         self.df = df
         t2 = time.time()
         print('calcualte 3d point cloud Done.', t2 - t1)
@@ -84,14 +84,14 @@ class point_cloud_generator:
 
 
 if __name__ == '__main__':
-
-    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_semantic_label_01.png'
+    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_rgb_00.png'
     depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_pinhole_depth_00.exr'
     # a = point_cloud_generator(rgb_path, depth_path, 'pc1.ply',
     #                           focal_length=13.11, scalingfactor=1)
 
     a = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
     rgb = cv2.imread(rgb_path)
+    rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
     # rgb = cv2.resize(rgb, (2048, 2048))
 
     a.rgb = rgb

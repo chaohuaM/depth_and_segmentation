@@ -12,7 +12,6 @@ def rand(a=0, b=1):
 
 
 def image_level_transform(img_items, flip_flag, jitter, size):
-
     h, w = size
     rand_jit1 = rand(1 - jitter, 1 + jitter)
     rand_jit2 = rand(1 - jitter, 1 + jitter)
@@ -48,7 +47,7 @@ def image_level_transform(img_items, flip_flag, jitter, size):
     return transform_items
 
 
-def pixel_level_distort(image, hue, sat, val):
+def pixel_level_distort(image, hue=.1, sat=1.5, val=1.5):
     hue = rand(-hue, hue)
     sat = rand(1, sat) if rand() < .5 else 1 / rand(1, sat)
     val = rand(1, val) if rand() < .5 else 1 / rand(1, val)
@@ -103,7 +102,11 @@ class RockDataset(Dataset):
                                       name.replace('rgb', 'pinhole_depth') + ".exr")
 
         x_img = cv2.imread(img_path, -1)
-        x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2RGB)
+        if self.input_shape[2] == 1:
+            x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2GRAY)
+        elif self.input_shape[2] == 3:
+            x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2RGB)
+
         y_label = cv2.imread(label_path, -1)
         depth_img = load_exr(depth_img_path)
         # -------------------------------#
@@ -111,8 +114,11 @@ class RockDataset(Dataset):
         # -------------------------------#
         x_img, y_label, depth_img = self._get_random_data(x_img, y_label, depth_img)
 
+        if self.input_shape[2] == 1:
+            x_img = x_img[:, :, np.newaxis]
 
         x_img = np.transpose(preprocess_input(np.array(x_img, np.float64)), [2, 0, 1])
+
         y_label = np.array(y_label)
         y_label[y_label >= self.num_classes] = self.num_classes
         # -------------------------------------------------------#
@@ -128,7 +134,7 @@ class RockDataset(Dataset):
         return x_img, y_label, seg_labels, depth_img
 
     def _get_random_data(self, image, label, depth, jitter=.3, hue=.1, sat=1.5, val=1.5):
-        h, w = self.input_shape
+        h, w, c = self.input_shape[0], self.input_shape[1], self.input_shape[2]
 
         if not self.transform:
             new_image = resize_and_centered(image, [h, w])
@@ -143,10 +149,16 @@ class RockDataset(Dataset):
         img_items = [image, label, depth]
 
         # image-level, 整体变换对所有图像都要操作
-        image, label, depth = image_level_transform(img_items, flip, jitter, self.input_shape)
+        image, label, depth = image_level_transform(img_items, flip, jitter, [h, w])
 
+        # 为rgb图像时才应用pixel-level增强
+        if c == 1:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         # pixel-level distortion image
         image = pixel_level_distort(image, hue, sat, val)
+
+        if c == 1:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
         return image, label, depth
 
@@ -172,5 +184,3 @@ def rock_dataset_collate(batch):
     seg_labels = np.array(seg_labels)
     depths = np.array(depths)
     return images, masks, seg_labels, depths
-
-

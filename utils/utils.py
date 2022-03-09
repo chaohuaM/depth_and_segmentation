@@ -25,7 +25,7 @@ def load_exr(image_path):
     :return:  opencv2 ndarray object, type = float32
     """
     image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = image[:, :, 0]
     image[image == 10000000000.00000] = 0.0
 
     return image

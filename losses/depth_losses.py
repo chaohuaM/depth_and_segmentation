@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 def imgrad(img):
@@ -55,6 +56,17 @@ def BerHu_Loss(z, z_fake, mask=None):
     losses, count = _mask_input(losses, mask)
     return torch.sum(losses) / count
 
+
+def scale_invariant_loss(z_fake, z_real, reduction="mean"):
+    """
+    z_fake: N ( x C) x H x W
+    z_real: N ( x C) x H x W
+    reduction: ...
+    """
+    z_fake = z_fake.flatten(start_dim=1)
+    z_real = z_real.flatten(start_dim=1)
+    alpha = (z_real - z_fake).mean(dim=1, keepdim=True)
+    return F.mse_loss(z_fake + alpha, z_real, reduction=reduction)
 
 
 
