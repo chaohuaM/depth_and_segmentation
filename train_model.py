@@ -26,7 +26,7 @@ def parse_argument():
     # 模型相关
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help='model backbone', required=False)
-    parser.add_argument('--pretrained', default=1, type=int,
+    parser.add_argument('--pretrained', default=0, type=int,
                         help='model backbone pretrained', required=False)
     parser.add_argument('--model_path', default='', type=str,
                         help='pretrained model path', required=False)
@@ -36,26 +36,26 @@ def parse_argument():
     parser.add_argument('--in_channels', default=3, type=int,
                         help='input image channels, 1 or 3', required=False)
     parser.add_argument('--num_classes', help='number of classes', default=2, required=False)
-    parser.add_argument('--transform', type=int, default=1, required=False,
+    parser.add_argument('--transform', type=int, default=0, required=False,
                         help='training data transform')
     # 训练相关
-    parser.add_argument('--Freeze_Train', default=1, type=int, required=False)
-    parser.add_argument('--Freeze_Epoch', default=50, type=int,
-                        help='Freeze_Epoch', required=False)
+    parser.add_argument('--Freeze_Train', default=0, type=int, required=False)
+    parser.add_argument('--Epoch', default=50, type=int,
+                        help='Epoch when freeze_train means freeze epoch', required=False)
     parser.add_argument('--UnFreeze_Epoch', default=50, type=int,
                         help='UnFreeze_Epoch', required=False)
     parser.add_argument('--Freeze_lr', default=1e-4, type=float,
                         help='freeze learning rate')
     parser.add_argument('--UnFreeze_lr', default=1e-5, type=float,
                         help='unfreeze learning rate')
-    parser.add_argument('--Freeze_batch_size', default=2, type=int, required=False,
+    parser.add_argument('--batch_size', default=2, type=int, required=False,
                         help='freeze batch size of image in training')
     parser.add_argument('--UnFreeze_batch_size', default=2, type=int, required=False,
                         help='unfreeze batch size of image in training')
 
     # 损失函数相关
-    parser.add_argument('--dice_loss', default=1, type=int, required=False)
-    parser.add_argument('--focal_loss', default=1, type=int, required=False)
+    parser.add_argument('--dice_loss', default=0, type=int, required=False)
+    parser.add_argument('--focal_loss', default=0, type=int, required=False)
     parser.add_argument('--cls_weights', default="", type=str, required=False)
 
     # 系统相关
@@ -135,15 +135,15 @@ def train_model(args):
     #   占用的显存较小，仅对网络进行微调
     # ----------------------------------------------------#
     Init_Epoch = 0
-    Freeze_Epoch = args.Freeze_Epoch
-    Freeze_batch_size = args.Freeze_batch_size
+    Epoch = args.Epoch
+    batch_size = args.batch_size
     Freeze_lr = args.Freeze_lr
     # ----------------------------------------------------#
     #   解冻阶段训练参数
     #   此时模型的主干不被冻结了，特征提取网络会发生改变
     #   占用的显存较大，网络所有的参数都会发生改变
     # ----------------------------------------------------#
-    UnFreeze_Epoch = args.UnFreeze_Epoch + Freeze_Epoch
+    UnFreeze_Epoch = args.UnFreeze_Epoch + Epoch
     UnFreeze_batch_size = args.UnFreeze_batch_size
     UnFreeze_lr = args.UnFreeze_lr
     # ------------------------------#
@@ -227,10 +227,10 @@ def train_model(args):
     #   提示OOM或者显存不足请调小Batch_size
     # ------------------------------------------------------#
     if True:
-        batch_size = Freeze_batch_size
+        batch_size = batch_size
         lr = Freeze_lr
         start_epoch = Init_Epoch
-        end_epoch = Freeze_Epoch
+        end_epoch = Epoch
 
         epoch_step = len(train_lines) // batch_size
         epoch_step_val = len(val_lines) // batch_size
@@ -260,10 +260,13 @@ def train_model(args):
                           num_classes)
             lr_scheduler.step()
 
-    if True:
+    if Freeze_Train:
+
+        model.unfreeze_backbone()
+
         batch_size = UnFreeze_batch_size
         lr = UnFreeze_lr
-        start_epoch = Freeze_Epoch
+        start_epoch = Epoch
         end_epoch = UnFreeze_Epoch
 
         epoch_step = len(train_lines) // batch_size
@@ -281,9 +284,6 @@ def train_model(args):
                          drop_last=True, collate_fn=rock_dataset_collate)
         gen_val = DataLoader(val_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
                              drop_last=True, collate_fn=rock_dataset_collate)
-
-        if Freeze_Train:
-            model.unfreeze_backbone()
 
         for epoch in range(start_epoch, end_epoch):
             fit_one_epoch(model_train, model, loss_history, optimizer, epoch,

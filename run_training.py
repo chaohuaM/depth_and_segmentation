@@ -19,5 +19,5 @@ if __name__ == "__main__":
     options = parse_argument()
 
     save_options(options.__dict__, options.log_dir)
-
+    print("successfully saved!")
     train_model(options)
