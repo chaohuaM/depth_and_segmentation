@@ -26,7 +26,7 @@ def parse_argument():
     # 模型相关
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help='model backbone', required=False)
-    parser.add_argument('--pretrained', default=True, type=bool,
+    parser.add_argument('--pretrained', default=1, type=int,
                         help='model backbone pretrained', required=False)
     parser.add_argument('--model_path', default='', type=str,
                         help='pretrained model path', required=False)
@@ -36,8 +36,10 @@ def parse_argument():
     parser.add_argument('--in_channels', default=3, type=int,
                         help='input image channels, 1 or 3', required=False)
     parser.add_argument('--num_classes', help='number of classes', default=2, required=False)
+    parser.add_argument('--transform', type=int, default=1, required=False,
+                        help='training data transform')
     # 训练相关
-    parser.add_argument('--Freeze_Train', default=True, type=bool, required=False)
+    parser.add_argument('--Freeze_Train', default=1, type=int, required=False)
     parser.add_argument('--Freeze_Epoch', default=50, type=int,
                         help='Freeze_Epoch', required=False)
     parser.add_argument('--UnFreeze_Epoch', default=50, type=int,
@@ -52,12 +54,12 @@ def parse_argument():
                         help='unfreeze batch size of image in training')
 
     # 损失函数相关
-    parser.add_argument('--dice_loss', default=True, type=bool, required=False)
-    parser.add_argument('--focal_loss', default=True, type=bool, required=False)
+    parser.add_argument('--dice_loss', default=1, type=int, required=False)
+    parser.add_argument('--focal_loss', default=1, type=int, required=False)
     parser.add_argument('--cls_weights', default="", type=str, required=False)
 
     # 系统相关
-    parser.add_argument('--Cuda', default=True, help='cuda availability', required=False)
+    parser.add_argument('--Cuda', default=1, help='cuda availability', type=int, required=False)
     parser.add_argument('--num_workers', default=2, type=int, required=False)
 
     parser.add_argument('--mode', metavar='train or predict', default='train', type=str,
@@ -65,6 +67,10 @@ def parse_argument():
 
     # 变成对象后修改
     args = parser.parse_args()
+
+    if args.in_channels == 1:
+        args.pretrained = False
+        args.Freeze_Train = False
 
     return args
 
@@ -117,6 +123,7 @@ def train_model(args):
     # ------------------------------#
     input_shape = args.input_shape
     in_channels = args.in_channels
+    transform = args.transform
 
     # ----------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。
@@ -177,9 +184,6 @@ def train_model(args):
 
     input_shape.append(in_channels)
 
-    if in_channels == 1:
-        pretrained = False
-
     model = Unet(in_channels=in_channels, num_classes=num_classes, pretrained=pretrained,
                  backbone=backbone, deformable_mode=False).train()
 
@@ -237,7 +241,7 @@ def train_model(args):
         optimizer = optim.Adam(model_train.parameters(), lr)
         lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.96)
 
-        train_dataset = RockDataset(train_lines, input_shape, num_classes, True, dataset_path)
+        train_dataset = RockDataset(train_lines, input_shape, num_classes, transform, dataset_path)
         val_dataset = RockDataset(val_lines, input_shape, num_classes, False, dataset_path)
         gen = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
                          drop_last=True, collate_fn=rock_dataset_collate)
@@ -271,7 +275,7 @@ def train_model(args):
         optimizer = optim.Adam(model_train.parameters(), lr)
         lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.96)
 
-        train_dataset = RockDataset(train_lines, input_shape, num_classes, True, dataset_path)
+        train_dataset = RockDataset(train_lines, input_shape, num_classes, transform, dataset_path)
         val_dataset = RockDataset(val_lines, input_shape, num_classes, False, dataset_path)
         gen = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers, pin_memory=True,
                          drop_last=True, collate_fn=rock_dataset_collate)

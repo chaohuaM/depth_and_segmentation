@@ -84,7 +84,7 @@ class point_cloud_generator:
 
 
 if __name__ == '__main__':
-    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_rgb_00.png'
+    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_instance_label_00.png'
     depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_pinhole_depth_00.exr'
     # a = point_cloud_generator(rgb_path, depth_path, 'pc1.ply',
     #                           focal_length=13.11, scalingfactor=1)

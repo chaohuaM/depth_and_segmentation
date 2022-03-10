@@ -85,10 +85,7 @@ if __name__ == "__main__":
     #   输入图片的大小
     # ------------------------------#
     input_shape = [256, 256]
-    in_channels = 3
-
-    if in_channels == 1:
-        pretrained = False
+    in_channels = 1
 
     # ----------------------------------------------------#
     #   训练分为两个阶段，分别是冻结阶段和解冻阶段。
@@ -144,6 +141,13 @@ if __name__ == "__main__":
     #   内存较小的电脑可以设置为2或者0
     # ------------------------------------------------------#
     num_workers = 2
+    # -------------模型保存路径-------------------------------#
+    time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S')
+    log_path = 'logs/' + time_str
+
+    if in_channels == 1:
+        pretrained = False
+        Freeze_Train = False
 
     model = Unet(in_channels=in_channels, num_classes=num_classes, pretrained=pretrained,
                  backbone=backbone, deformable_mode=False).train()
@@ -168,8 +172,7 @@ if __name__ == "__main__":
         cudnn.benchmark = True
         model_train = model_train.cuda()
 
-    time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S')
-    loss_history = LossHistory("logs/", time_str)
+    loss_history = LossHistory(log_path)
 
     # ---------------------------#
     #   读取数据集对应的txt
