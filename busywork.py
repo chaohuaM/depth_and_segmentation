@@ -1,28 +1,29 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import os
 import torch.optim as optim
 
 # 测试dataloader函数
-from torch.utils.data import DataLoader
-from utils.dataloader import RockDataset, rock_dataset_collate
-
-train_lines = ['1306sensorRight_rgb_00', '4111sensorRight_rgb_00', '0752sensorLeft_rgb_00', '1080sensorLeft_rgb_00',
-               '3940sensorLeft_rgb_00', '4465sensorRight_rgb_00', '1665sensorRight_rgb_00', '3687sensorLeft_rgb_00',
-               '2669sensorLeft_rgb_00', '1702sensorLeft_rgb_00', '4359sensorLeft_rgb_00', '4550sensorRight_rgb_00']
-input_shape = [256, 256]
-input_channel = 1
-input_shape.append(input_channel)
-num_classes = 2
-data_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
-train_dataset = RockDataset(train_lines, input_shape, num_classes, False, data_dir)
-gen = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=2, pin_memory=True,
-                 drop_last=True, collate_fn=rock_dataset_collate)
-
-for batch in gen:
-    depths = torch.from_numpy(batch[3]).type(torch.FloatTensor)
-    depths = torch.unsqueeze(depths, 1)
+# from torch.utils.data import DataLoader
+# from utils.dataloader import RockDataset, rock_dataset_collate
+#
+# train_lines = ['1306sensorRight_rgb_00', '4111sensorRight_rgb_00', '0752sensorLeft_rgb_00', '1080sensorLeft_rgb_00',
+#                '3940sensorLeft_rgb_00', '4465sensorRight_rgb_00', '1665sensorRight_rgb_00', '3687sensorLeft_rgb_00',
+#                '2669sensorLeft_rgb_00', '1702sensorLeft_rgb_00', '4359sensorLeft_rgb_00', '4550sensorRight_rgb_00']
+# input_shape = [256, 256]
+# input_channel = 1
+# input_shape.append(input_channel)
+# num_classes = 2
+# data_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
+# train_dataset = RockDataset(train_lines, input_shape, num_classes, False, data_dir)
+# gen = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=2, pin_memory=True,
+#                  drop_last=True, collate_fn=rock_dataset_collate)
+#
+# for batch in gen:
+#     depths = torch.from_numpy(batch[3]).type(torch.FloatTensor)
+#     depths = torch.unsqueeze(depths, 1)
 
 # 测试gradient difference loss
 # from losses.grad_loss import GRAD_LOSS, imgrad_yx
@@ -30,14 +31,14 @@ for batch in gen:
 # loss1 = imgrad_yx(depths)
 # loss = GRAD_LOSS(depths, depths).item()
 
-# # 测试模型
+# 测试模型
 # from model.unet_with_backbone import Unet
 #
 #
 # model = Unet(backbone='resnet50', deformable_mode=False).cuda()
-# # x = torch.zeros(2, 3, 512, 512).cuda()
-# # y, y_depth = model(x)
-#
+# x = torch.zeros(2, 3, 512, 512).cuda()
+# y, y_depth = model(x)
+# #
 # model_train = model.train()
 # # 测试是否可以训练
 # from utils.callbacks import LossHistory
@@ -74,26 +75,38 @@ for batch in gen:
 # left_depth = load_exr(left_exr_path)
 # right_depth = load_exr(right_exr_path)
 #
-# img_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/0100sensorLeft_rgb_00.png'
-# #
-# img_bgr = cv2.imread(img_path)
-# # img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+img_path = '/home/ch5225/Desktop/5.NaTeCam-2C/第五批/HX1-Ro_GRAS_NaTeCamB-F-002_SCI_N_20211029062325_20211029062325_00164_A.2C.jpg'
+#
+img_bgr = cv2.imread(img_path, 0)
+img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_GRAY2RGB)
 # img_g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-# img_g = img_g[:,:,np.newaxis]
-#
-# input_shape = [256, 256]
-# input_channel = 3
-# input_shape.append(input_channel)
+# img_g = img_g[:, :, np.newaxis]
 
-#
+input_shape = [512, 512]
+input_channel = 3
+input_shape.append(input_channel)
+
 # img_rgb = cv2.cvtColor(img_g, cv2.COLOR_GRAY2BGR)
 
 from utils.dataloader import pixel_level_distort
 
-# img_t = pixel_level_distort(img_bgr)
-# img_t1 = img_t.astype(np.uint8)
-# cv2.imshow('RR', img_bgr)
-# cv2.waitKey()
+img_t = pixel_level_distort(img_rgb).astype(np.uint8)
+img_t1 = cv2.cvtColor(img_t, cv2.COLOR_RGB2BGR).astype(np.uint8)
+
+plt.subplot(221)
+plt.imshow(img_rgb)
+plt.axis('off')
+plt.subplot(222)
+plt.imshow(img_bgr)
+plt.axis('off')
+plt.subplot(223)
+plt.imshow(img_t)
+plt.axis('off')
+plt.subplot(224)
+plt.imshow(img_t1)
+plt.axis('off')
+plt.show()
+
 
 # np.seterr(divide='ignore', invalid='ignore')
 # left_disparity = 595.60 * 270 / (left_depth * 1000)
@@ -104,20 +117,20 @@ from utils.dataloader import pixel_level_distort
 # from model.unet_with_backbone import Unet
 #
 # batch_size = 1
-# model_path = 'logs/ep100-losses0.602-val_loss0.695.pth'
-# model = Unet(backbone='resnet50', deformable_mode=False)
-# input_shape = [256, 256]
+# model_path = 'logs/2022_03_16_00_37_29/ep100.pth'
+# model = Unet(backbone='resnet50', deformable_mode=False, in_channels=3)
+# input_shape = [512, 512]
 # model.load_state_dict(torch.load(model_path, map_location='cuda'))
 # model = model.eval()
 # # model = model.cuda()
 #
-# x = torch.randn(batch_size, 3, 256, 256, requires_grad=True)
+# x = torch.randn(batch_size, 3, 512, 512, requires_grad=True)
 # torch_out = model(x)
 #
 # # Export the model
 # torch.onnx.export(model,  # model being run
 #                   x,  # model input (or a tuple for multiple inputs)
-#                   "depth_and_segmentation.onnx",  # where to save the model (can be a file or file-like object)
+#                   "logs/2022_03_16_00_37_29/ep100.onnx",  # where to save the model (can be a file or file-like object)
 #                   export_params=True,  # store the trained parameter weights inside the model file
 #                   opset_version=11,  # the ONNX version to export the model to
 #                   do_constant_folding=True,  # whether to execute constant folding for optimization
@@ -145,6 +158,68 @@ import json
 #     args.__dict__ = json.load(f)
 
 
+# import cv2
+# import torch
+#
+# import matplotlib.pyplot as plt
+#
+# model_type = "DPT_Large"  # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
+# # model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
+# # model_type = "MiDaS_small"  # MiDaS v2.1 - Small   (lowest accuracy, highest inference speed)
+#
+# midas = torch.hub.load("intel-isl/MiDaS", model_type)
+#
+# device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+# midas.to(device)
+# midas.eval()
+#
+# midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+#
+# if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
+#     transform = midas_transforms.dpt_transform
+# else:
+#     transform = midas_transforms.small_transform
+#
+# img = cv2.imread('/home/ch5225/chaohua/Rock-data/real_moon_image/train/TCAM15.png')
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#
+# input_batch = transform(img).to(device)
+#
+# with torch.no_grad():
+#     prediction = midas(input_batch)
+#
+#     prediction = torch.nn.functional.interpolate(
+#         prediction.unsqueeze(1),
+#         size=img.shape[:2],
+#         mode="bicubic",
+#         align_corners=False,
+#     ).squeeze()
+#
+# output = prediction.cpu().numpy()
+# plt.imshow(output)
+# plt.show()
 
+# pc = point_cloud_generator(focal_length=2383.60, scalingfactor=1.0)
+#
+# pc.rgb = img_raw
+# pc.depth = pr_depth
+# pc.calculate()
+# pc.write_ply('pc1.ply')
+# pc.show_point_cloud()
 
-
+# from predict import pr_Unet
+#
+# pr_unet = pr_Unet(config_path='logs/2022_03_11_17_49_48/2022_03_11_17_49_48_config.yaml',
+#                   model_weights_path='logs/2022_03_11_17_49_48/ep100.pth')
+#
+# image_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0009sensorLeft_rgb_00.png'
+#
+# img = cv2.imread(image_path)
+#
+# pr_image, pr_depth = pr_unet.detect_image(img)
+#
+# plt.subplot(121)
+# plt.imshow(pr_image)
+# plt.subplot(122)
+# plt.imshow(pr_depth)
+# plt.show()

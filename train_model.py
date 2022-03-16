@@ -26,6 +26,8 @@ def parse_argument():
     # 模型相关
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help='model backbone', required=False)
+    parser.add_argument('--deformable', default=0, type=int,
+                        help='model deformable', required=False)
     parser.add_argument('--pretrained', default=0, type=int,
                         help='model backbone pretrained', required=False)
     parser.add_argument('--model_path', default='', type=str,
@@ -89,6 +91,9 @@ def train_model(args):
     # -------------------------------#
     #   主干网络选择
     #   vgg、resnet50
+    # -------------------------------#
+    #   可变形巻积
+    deformable_mode = args.deformable
     # -------------------------------#
     backbone = args.backbone
     # ----------------------------------------------------------------------------------------------------------------------------#
@@ -185,7 +190,7 @@ def train_model(args):
     input_shape.append(in_channels)
 
     model = Unet(in_channels=in_channels, num_classes=num_classes, pretrained=pretrained,
-                 backbone=backbone, deformable_mode=False).train()
+                 backbone=backbone, deformable_mode=deformable_mode).train()
 
     if not pretrained:
         weights_init(model)

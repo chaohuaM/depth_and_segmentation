@@ -60,9 +60,9 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
 
             # 深度值损失部分
             d1_loss = BerHu_Loss(depths, depth_outputs)
-            d2_loss = GRAD_LOSS(depths, depth_outputs)
+            #d2_loss = GRAD_LOSS(depths, depth_outputs)
 
-            depth_loss = d1_loss + d2_loss
+            depth_loss = d1_loss# + d2_loss
 
             # d_factor = 10.0
 
@@ -75,8 +75,9 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
             total_f_score += _f_score.item()
 
             pbar.set_postfix(**{'total_loss': total_loss / (iteration + 1),
-                                'depth_loss': depth_loss.item() / (iteration + 1),
                                 'f_score': total_f_score / (iteration + 1),
+                                'sem_loss': sem_loss.item(),
+                                'depth_loss': depth_loss.item(),
                                 'lr': get_lr(optimizer)})
             pbar.update(1)
 
@@ -119,9 +120,9 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
 
                 # 深度值损失部分
                 d1_loss = BerHu_Loss(depths, depth_outputs)
-                d2_loss = GRAD_LOSS(depths, depth_outputs)
+                # d2_loss = GRAD_LOSS(depths, depth_outputs)
 
-                depth_loss = d1_loss + d2_loss
+                depth_loss = d1_loss # + d2_loss
 
                 # d_factor = 10.0
 
@@ -131,8 +132,9 @@ def fit_one_epoch(model_train, model, loss_history, optimizer, epoch, epoch_step
                 val_f_score += _f_score.item()
 
             pbar.set_postfix(**{'total_loss': val_loss / (iteration + 1),
-                                'depth_loss': depth_loss.item() / (iteration + 1),
                                 'f_score': val_f_score / (iteration + 1),
+                                'sem_loss': sem_loss.item(),
+                                'depth_loss': depth_loss.item(),
                                 'lr': get_lr(optimizer)})
             pbar.update(1)
 

@@ -47,20 +47,24 @@ def image_level_transform(img_items, flip_flag, jitter, size):
     return transform_items
 
 
-def pixel_level_distort(image, hue=.1, sat=1.5, val=1.5):
-    hue = rand(-hue, hue)
-    sat = rand(1, sat) if rand() < .5 else 1 / rand(1, sat)
-    val = rand(1, val) if rand() < .5 else 1 / rand(1, val)
+def pixel_level_distort(image, hue=1, sat=2, val=2):
+    hue = rand(-hue, hue) if rand() < .8 else 0
+    sat = rand(0, sat) if rand() < .8 else 1
+    val = rand(0, val) if rand() < .8 else 1
+
     x = cv2.cvtColor(np.array(image, np.float32) / 255, cv2.COLOR_RGB2HSV)
     x[..., 0] += hue * 360
     x[..., 0][x[..., 0] > 1] -= 1
     x[..., 0][x[..., 0] < 0] += 1
+    # x[..., 1] = np.power(x[..., 1], sat)
+    # x[..., 2] = np.power(x[..., 2], val)
     x[..., 1] *= sat
     x[..., 2] *= val
     x[x[:, :, 0] > 360, 0] = 360
     x[:, :, 1:][x[:, :, 1:] > 1] = 1
     x[x < 0] = 0
-    image_data = cv2.cvtColor(x, cv2.COLOR_HSV2RGB) * 255
+    # image_data = x.astype(np.uint8)
+    image_data = cv2.cvtColor(x, cv2.COLOR_HSV2RGB)*255
 
     return image_data
 
@@ -101,10 +105,12 @@ class RockDataset(Dataset):
         depth_img_path = os.path.join(os.path.join(self.dataset_path, "depth_exr"),
                                       name.replace('rgb', 'pinhole_depth') + ".exr")
 
-        x_img = cv2.imread(img_path, -1)
-        if self.input_shape[2] == 1:
-            x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2GRAY)
-        elif self.input_shape[2] == 3:
+        # 以50%概率读取成灰度图 再转换成rgb，只有亮度信息
+        if rand() < 0.5:
+            x_img = cv2.imread(img_path, 0)
+            x_img = cv2.cvtColor(x_img, cv2.COLOR_GRAY2RGB)
+        else:
+            x_img = cv2.imread(img_path, 1)
             x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2RGB)
 
         y_label = cv2.imread(label_path, -1)
