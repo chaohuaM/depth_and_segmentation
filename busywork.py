@@ -75,37 +75,37 @@ import torch.optim as optim
 # left_depth = load_exr(left_exr_path)
 # right_depth = load_exr(right_exr_path)
 #
-img_path = '/home/ch5225/Desktop/5.NaTeCam-2C/第五批/HX1-Ro_GRAS_NaTeCamB-F-002_SCI_N_20211029062325_20211029062325_00164_A.2C.jpg'
+# img_path = '/home/ch5225/Desktop/5.NaTeCam-2C/第五批/HX1-Ro_GRAS_NaTeCamB-F-002_SCI_N_20211029062325_20211029062325_00164_A.2C.jpg'
+# #
+# img_bgr = cv2.imread(img_path, 0)
+# img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_GRAY2RGB)
+# # img_g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+# # img_g = img_g[:, :, np.newaxis]
 #
-img_bgr = cv2.imread(img_path, 0)
-img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_GRAY2RGB)
-# img_g = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-# img_g = img_g[:, :, np.newaxis]
-
-input_shape = [512, 512]
-input_channel = 3
-input_shape.append(input_channel)
-
-# img_rgb = cv2.cvtColor(img_g, cv2.COLOR_GRAY2BGR)
-
-from utils.dataloader import pixel_level_distort
-
-img_t = pixel_level_distort(img_rgb).astype(np.uint8)
-img_t1 = cv2.cvtColor(img_t, cv2.COLOR_RGB2BGR).astype(np.uint8)
-
-plt.subplot(221)
-plt.imshow(img_rgb)
-plt.axis('off')
-plt.subplot(222)
-plt.imshow(img_bgr)
-plt.axis('off')
-plt.subplot(223)
-plt.imshow(img_t)
-plt.axis('off')
-plt.subplot(224)
-plt.imshow(img_t1)
-plt.axis('off')
-plt.show()
+# input_shape = [512, 512]
+# input_channel = 3
+# input_shape.append(input_channel)
+#
+# # img_rgb = cv2.cvtColor(img_g, cv2.COLOR_GRAY2BGR)
+#
+# from utils.dataloader import pixel_level_distort
+#
+# img_t = pixel_level_distort(img_rgb).astype(np.uint8)
+# img_t1 = cv2.cvtColor(img_t, cv2.COLOR_RGB2BGR).astype(np.uint8)
+#
+# plt.subplot(221)
+# plt.imshow(img_rgb)
+# plt.axis('off')
+# plt.subplot(222)
+# plt.imshow(img_bgr)
+# plt.axis('off')
+# plt.subplot(223)
+# plt.imshow(img_t)
+# plt.axis('off')
+# plt.subplot(224)
+# plt.imshow(img_t1)
+# plt.axis('off')
+# plt.show()
 
 
 # np.seterr(divide='ignore', invalid='ignore')
@@ -142,6 +142,7 @@ plt.show()
 
 from argparse import ArgumentParser
 import json
+
 
 # parser = ArgumentParser()
 # parser.add_argument('--seed', type=int, default=8)
@@ -223,3 +224,98 @@ import json
 # plt.subplot(122)
 # plt.imshow(pr_depth)
 # plt.show()
+
+def save_png(img_path, data):
+    cv2.imwrite(img_path, data)
+
+
+# 将标签中的rgb值转为为0和1
+import glob
+
+# label_dir = '/home/ch5225/Desktop/模拟数据/2022-03-17-20-11-07/semantic_01/'
+# new_label_dir = '/home/ch5225/Desktop/模拟数据/2022-03-17-20-11-07/semantic_01_label/'
+#
+# if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+#
+# count = 0
+#
+# for img_path in glob.glob(label_dir + '*.png'):
+#     img_name = img_path.split('/')[-1]
+#     img = cv2.imread(img_path, 0)
+#
+#     img[img < 100] = 0
+#     img[img > 100] = 1
+#
+#     save_png(new_label_dir + '/' + img_name, img)
+#
+#     count += 1
+#
+#     if count % 10 == 0:
+#         print(count)
+
+
+# from model.unet_with_backbone import Unet
+# from torchsummary import summary
+#
+# model = Unet(backbone='resnet50')
+# summary(model.to('cuda'), (3, 512, 512))
+
+
+# 测试边缘检测代码
+
+# image_path = '/home/ch5225/Desktop/组会插图/LocCam_2015_11_26_12_57_21_133_1_json.png'
+# result_path = 'test.png'
+# image = cv2.imread(image_path)
+# image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # 将图像转化为灰度图像
+# image = cv2.resize(image, (512, 512))
+# image = cv2.GaussianBlur(image, (3, 3), 0)
+# cv2.imshow("Original", image)
+# cv2.waitKey(100)
+
+# 拉普拉斯边缘检测
+# lap = cv2.Laplacian(image, cv2.CV_64F)  # 拉普拉斯边缘检测
+# lap = np.uint8(np.absolute(lap))  ##对lap去绝对值
+# cv2.imshow("Laplacian", lap)
+# cv2.waitKey()
+
+# # Sobel边缘检测
+# sobelX = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)  # x方向的梯度
+# sobelY = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)  # y方向的梯度
+#
+# sobelX = np.uint8(np.absolute(sobelX))  # x方向梯度的绝对值
+# sobelY = np.uint8(np.absolute(sobelY))  # y方向梯度的绝对值
+#
+#
+# sobelCombined = cv2.bitwise_or(sobelX, sobelY)  #
+# cv2.imshow("Sobel X", sobelX)
+# cv2.waitKey(100)
+# cv2.imshow("Sobel Y", sobelY)
+# cv2.waitKey(100)
+# cv2.imshow("Sobel Combined", sobelCombined)
+# cv2.waitKey(0)
+#
+# plt.subplot(221)
+# plt.imshow(image)
+# plt.axis('off')
+# plt.subplot(222)
+# plt.imshow(sobelX)
+# plt.axis('off')
+# plt.subplot(223)
+# plt.imshow(sobelY)
+# plt.axis('off')
+# plt.subplot(224)
+# plt.imshow(sobelCombined)
+# plt.axis('off')
+# plt.show()
+
+import segmentation_models_pytorch as smp
+from torchsummary import summary
+
+model = smp.DeepLabV3(encoder_name='resnet18', decoder_channels=64, in_channels=1)
+model = smp.Unet(encoder_name='resnet18').decoder
+
+x = torch.zeros(1, 3, 512, 512)
+y = model(x)
+for u in y:
+    print(u.shape)
+summary(model.to('cuda'), (1, 512, 512))

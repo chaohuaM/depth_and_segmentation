@@ -4,8 +4,15 @@ import torch.utils.model_zoo as model_zoo
 
 BatchNorm2d = nn.BatchNorm2d
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'deformable_resnet18', 'deformable_resnet50',
-           'resnet152']
+__all__ = ['ResNet',
+           'resnet18',
+           'resnet34',
+           'resnet50',
+           'resnet101',
+           'resnet152',
+           'deformable_resnet18',
+           'deformable_resnet50',
+           ]
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -166,8 +173,7 @@ class ResNet(nn.Module):
                 BatchNorm2d(planes * block.expansion),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, dcn=dcn))
+        layers = [block(self.inplanes, planes, stride, downsample, dcn=dcn)]
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, dcn=dcn))
@@ -226,15 +232,13 @@ def resnet34(pretrained=True, **kwargs):
     return model
 
 
-def resnet50(pretrained=True, deformable_mode=True, **kwargs):
+def resnet50(pretrained=True, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    if deformable_mode:
-        model = ResNet(Bottleneck, [3, 4, 6, 3], dcn=dict(deformable_groups=1), **kwargs)
-    else:
-        model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+
     if pretrained:
         assert kwargs['in_channels'] == 3, 'in_channels must be 3 when pretrained is True'
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']), strict=False)
@@ -282,8 +286,9 @@ if __name__ == '__main__':
     from torchsummary import summary
 
     x = torch.zeros(1, 3, 512, 512)
-    net = resnet18(pretrained=False)
+    net = resnet50(pretrained=False)
     # model_resnet50 = resnet50(pretrained=False)
     y = net(x)
     for u in y:
         print(u.shape)
+    summary(net.to('cuda'), (3, 512, 512))

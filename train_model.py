@@ -7,7 +7,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from model.unet_with_backbone import Unet, weights_init
+from model.unet_with_backbone import MyNet, weights_init
 from utils.callbacks import LossHistory
 from utils.dataloader import RockDataset, rock_dataset_collate
 from utils.utils_fit import fit_one_epoch
@@ -26,8 +26,6 @@ def parse_argument():
     # 模型相关
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help='model backbone', required=False)
-    parser.add_argument('--deformable', default=0, type=int,
-                        help='model deformable', required=False)
     parser.add_argument('--pretrained', default=0, type=int,
                         help='model backbone pretrained', required=False)
     parser.add_argument('--model_path', default='', type=str,
@@ -189,8 +187,8 @@ def train_model(args):
 
     input_shape.append(in_channels)
 
-    model = Unet(in_channels=in_channels, num_classes=num_classes, pretrained=pretrained,
-                 backbone=backbone, deformable_mode=deformable_mode).train()
+    model = MyNet(in_channels=in_channels, num_classes=num_classes, pretrained=pretrained,
+                  backbone=backbone).train()
 
     if not pretrained:
         weights_init(model)

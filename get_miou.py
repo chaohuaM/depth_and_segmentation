@@ -3,7 +3,7 @@ import os
 import cv2
 from tqdm import tqdm
 
-from predict import pr_Unet
+from predict import pr_Unet, blend_image, show_depth
 from utils.utils_metrics import compute_mIoU, show_results
 
 '''
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     #   miou_mode为1代表仅仅获得预测结果。
     #   miou_mode为2代表仅仅计算miou。
     # ---------------------------------------------------------------------------#
-    miou_mode = 0
+    miou_mode = 1
     # ------------------------------#
     #   分类个数+1、如2+1
     # ------------------------------#
@@ -29,19 +29,31 @@ if __name__ == "__main__":
     # --------------------------------------------#
     name_classes = ["background", "rock"]
     # -------------------------------------------------------#
-    #   指向VOC数据集所在的文件夹
-    #   默认指向根目录下的VOC数据集
+    #   指向数据集所在的文件夹
+    #   数据集路径
     # -------------------------------------------------------#
-    dataset_path = 'dataset/oaisys_data'
+    dataset_path = '/home/ch5225/chaohua/MSL_Mastcam_R_DLRC_png/'
 
-    image_ids = open(os.path.join(dataset_path, "ImageSets/val.txt"), 'r').read().splitlines()
-    gt_dir = os.path.join(dataset_path, "semantic_01_label")
-    miou_out_path = "dataset/oaisys_data"
+    # 有val.txt的时候
+    # image_ids = open(os.path.join(dataset_path, "ImageSets/val.txt"), 'r').read().splitlines()
+    # 直接读取文件夹里的文件名
+    image_ids = os.listdir(os.path.join(dataset_path, ''))
+    image_ids = [image_id[:-4] for image_id in image_ids]
+    gt_dir = os.path.join(dataset_path, "")
+    miou_out_path = "/home/ch5225/chaohua/MSL_Mastcam_R_DLRC_png_MIOU"
     pred_dir = os.path.join(miou_out_path, 'detection-results')
+    pred_col_dir = os.path.join(miou_out_path, 'detection-col-results')
+    pred_depth_dir = os.path.join(miou_out_path, 'detection-depth-results')
 
     if miou_mode == 0 or miou_mode == 1:
         if not os.path.exists(pred_dir):
             os.makedirs(pred_dir)
+
+        if not os.path.exists(pred_col_dir):
+            os.makedirs(pred_col_dir)
+
+        if not os.path.exists(pred_depth_dir):
+            os.makedirs(pred_depth_dir)
 
         print("Load model.")
         config_path = 'logs/2022_03_11_17_49_48/2022_03_11_17_49_48_config.yaml'
@@ -51,13 +63,20 @@ if __name__ == "__main__":
 
         print("Get predict result.")
         for image_id in tqdm(image_ids):
-            image_path = os.path.join(dataset_path, "rgb/" + image_id + ".png")
+            image_path = os.path.join(dataset_path, image_id + '.png')
             img = cv2.imread(image_path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
             pr_seg, pr_depth = pr_unet.detect_image(img)
 
             cv2.imwrite(os.path.join(pred_dir, image_id + ".png"), pr_seg)
+
+            col_seg = blend_image(img, pr_seg, 0.3)
+            col_depth = show_depth(pr_depth)
+
+            cv2.imwrite(os.path.join(pred_col_dir, image_id + ".png"), cv2.cvtColor(col_seg, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(os.path.join(pred_depth_dir, image_id + ".png"), col_depth)
+
         print("Get predict result done.")
 
     if miou_mode == 0 or miou_mode == 2:
