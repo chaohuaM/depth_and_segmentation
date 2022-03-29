@@ -1,4 +1,3 @@
-from PIL import Image
 import numpy as np
 from open3d import read_point_cloud, draw_geometries
 import time
@@ -7,14 +6,28 @@ import cv2
 
 
 class point_cloud_generator:
-
-    def __init__(self, focal_length, scalingfactor):
+    """
+    根据RGB图像和深度图像生成深度图
+    """
+    def __init__(self, focal_length, scalingfactor, rgb=None, depth=None):
+        """
+        参数包括焦距、缩放因子、rgb图像矩阵和depth图像矩阵
+        :param focal_length:  焦距，可以从相机内参K矩阵获取
+        :param scalingfactor: 缩放比例，通常是焦距mm和m之间的转换
+        :param rgb:  ndarray rgb image
+        :param depth: ndarray depth image
+        """
         self.focal_length = focal_length
         self.scalingfactor = scalingfactor
-        self.rgb = None
-        self.depth = None
-        self.pc_file = None
+        self.rgb = rgb      # rgb image,ndarray
+        self.depth = depth    # depth image, depth.shape == rgb.shape
+        self.X = None        # 所有点X坐标
+        self.Y = None        # 所有点Y坐标
+        self.Z = None        # 所有点Z坐标
+        self.df = None       # 点云表格 按字段存储
+        self.pc_file = None  # 点云存储文件名  *.ply
 
+    # 设置为property,可以随着其他变量的改变动态更新
     @property
     def height(self):
         return self.rgb.shape[0]
@@ -84,21 +97,15 @@ class point_cloud_generator:
 
 
 if __name__ == '__main__':
-    rgb_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_instance_label_00.png'
-    depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-03-03-15-15-02/batch_0002/sensorLeft/0008sensorLeft_pinhole_depth_00.exr'
-    # a = point_cloud_generator(rgb_path, depth_path, 'pc1.ply',
-    #                           focal_length=13.11, scalingfactor=1)
+    rgb_path = '*.png'
+    depth_path = '*.exr'
 
-    a = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
     rgb = cv2.imread(rgb_path)
     rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-    # rgb = cv2.resize(rgb, (2048, 2048))
-
-    a.rgb = rgb
 
     depth = load_exr(depth_path)
-    # depth = cv2.resize(depth, (2048, 2048))
-    a.depth = depth
+
+    a = point_cloud_generator(focal_length=595.90, scalingfactor=1.0, rgb=rgb, depth=depth)
 
     a.calculate()
     a.write_ply('pc1.ply')

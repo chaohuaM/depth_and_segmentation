@@ -152,14 +152,17 @@ class PredictModel(object):
         original_h = input_image.shape[0]
         original_w = input_image.shape[1]
         feature_maps = []
+
         def layer_hook(module, input, output):
             output = output[0].cpu().numpy()
             for feature in output:
                 feature_maps.append(resize_and_centered(feature, (original_h, original_w), reverse=True))
 
+        # hook handler必须定义在model的前向过程之前
         hook = self.net.get_submodule(layer_name).register_forward_hook(layer_hook)
+        # 预测图片，相当于执行了model.forward的过程
         _, _ = self.detect_image(input_image)
-
+        # 移除hook handler
         hook.remove()
 
         return feature_maps
@@ -188,4 +191,3 @@ if __name__ == '__main__':
     cv2.waitKey(1000)
     cv2.imshow('depth', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
     cv2.waitKey()
-
