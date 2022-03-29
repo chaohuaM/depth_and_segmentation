@@ -4,7 +4,7 @@ import torch
 import cv2
 import numpy as np
 import torch.nn.functional as F
-from model.unet_with_backbone import Unet
+from model.unet_with_backbone import MyNet
 from utils.utils import resize_and_centered, preprocess_input, normalization, load_exr
 from depth2pointcloud import point_cloud_generator
 
@@ -29,7 +29,8 @@ def show_depth(depth):
 
     return depth_img.astype(np.uint8)
 
-class pr_Unet(object):
+
+class PredictModel(object):
     _defaults = {
         # -------------------------------------------------------------------#
         #   model_path指向logs文件夹下的权值文件
@@ -82,8 +83,7 @@ class pr_Unet(object):
     #   获得所有的分类
     # ---------------------------------------------------#
     def generate(self):
-        self.net = Unet(num_classes=self.num_classes, backbone=self.backbone, in_channels=self.in_channels,
-                        deformable_mode=self.deformable)
+        self.net = MyNet(num_classes=self.num_classes, backbone=self.backbone, in_channels=self.in_channels)
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net.load_state_dict(torch.load(self.model_weights_path, map_location=device))
@@ -140,51 +140,52 @@ class pr_Unet(object):
 
         return pr_seg, pr_depth
 
+    # 特征可视化，利用pytorch的 register_forward_hook() 函数
+    def get_feature_maps(self, input_image, layer_name):
+        """
+        get feature maps by layer name,
+        using the built-in pytorch hook function —— register_forward_hook()
+        :param input_image: the inpput image to be detected, ndarray
+        :param layer_name: the name of the layer to be visualized
+        :return:  feature maps List[]
+        """
+        original_h = input_image.shape[0]
+        original_w = input_image.shape[1]
+        feature_maps = []
+        def layer_hook(module, input, output):
+            output = output[0].cpu().numpy()
+            for feature in output:
+                feature_maps.append(resize_and_centered(feature, (original_h, original_w), reverse=True))
+
+        hook = self.net.get_submodule(layer_name).register_forward_hook(layer_hook)
+        _, _ = self.detect_image(input_image)
+
+        hook.remove()
+
+        return feature_maps
+
 
 if __name__ == '__main__':
-
-    config_path = 'logs/2022_03_16_17_23_07/2022_03_16_17_23_07_config.yaml'
-    model_weights_path = 'logs/2022_03_16_17_23_07/ep100.pth'
-    pr_unet = pr_Unet(config_path=config_path, model_weights_path=model_weights_path)
-
-    image_path = '/home/ch5225/Desktop/模拟数据/2022-03-17-20-11-07/rgb/0005sensorRight.png'
+    config_path = 'logs/2022_03_27_21_48_23/2022_03_27_21_48_23_config.yaml'
+    model_weights_path = 'logs/2022_03_27_21_48_23/ep100.pth'
+    pr_net = PredictModel(config_path=config_path, model_weights_path=model_weights_path)
+    mode = 'dir_predict'
+    image_path = '/home/ch5225/chaohua/MarsData/Data/Rock-B/images/349_0349ML0014190010108330E01_DXXX.jpg'
     # image_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/0030sensorRight_rgb_00.png'
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    pr_seg, pr_depth = pr_unet.detect_image(img)
-
+    pr_seg, pr_depth = pr_net.detect_image(img)
     # blend混合显示
     col_seg = blend_image(img, pr_seg, 0.3)
 
-    pr_depth = normalization(pr_depth) * 255
-    depth_img = cv2.applyColorMap(pr_depth.astype(np.uint8), cv2.COLORMAP_MAGMA)
+    col_depth = show_depth(pr_depth)
 
-    cv2.imwrite('test.png', depth_img)
-    # cv2.imshow('rr', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
-    # cv2.waitKey()
-    # plt.subplot(221)
-    # plt.imshow(img)
-    # plt.axis('off')
-    # plt.subplot(222)
-    # plt.imshow(pr_seg)
-    # plt.axis('off')
-    # plt.subplot(223)
-    # plt.imshow(col_seg)
-    # plt.axis('off')
-    # plt.subplot(224)
-    # plt.imshow(pr_depth)
-    # plt.axis('off')
-    # plt.show()
+    cv2.imwrite('predicted_seg.png', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
+    cv2.imwrite('predicted_depth.png', col_depth)
 
-    # 深度图到点云生成
-    # exr_depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-02-24-17-27-51/batch_0002/sensorRight/0007sensorRight_pinhole_depth_00.exr'
-    # gt_depth = load_exr(exr_depth_path)
-    # pc = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
-    #
-    # pc.rgb = col_seg
-    # pc.depth = pr_depth
-    # pc.calculate()
-    # pc.write_ply('pc1.ply')
-    # pc.show_point_cloud()
+    cv2.imshow('seg', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
+    cv2.waitKey(1000)
+    cv2.imshow('depth', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
+    cv2.waitKey()
 

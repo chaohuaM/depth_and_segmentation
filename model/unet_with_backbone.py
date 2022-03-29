@@ -8,10 +8,14 @@ from model.vgg import VGG16
 class SpatialSEModule(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
-        self.sSE = nn.Sequential(nn.Conv2d(in_channels, 1, 1), nn.Sigmoid())
+        self.conv = nn.Conv2d(in_channels, 1, 1)
+        self.norm = nn.Sigmoid()
         
     def forward(self, input):
-        return self.sSE(input)
+        output = self.conv(input)
+        sam_mask = self.norm(output)
+
+        return sam_mask
 
 
 class ChannelSEModule(nn.Module):
@@ -78,7 +82,7 @@ class DecoderBranch(nn.Module):
 
 
 class MyNet(nn.Module):
-    def __init__(self, in_channels=3, num_classes=2, pretrained=False, backbone='vgg16'):
+    def __init__(self, in_channels=3, num_classes=2, pretrained=False, backbone='resnet18'):
         super(MyNet, self).__init__()
 
         self.backbone = backbone
@@ -181,7 +185,7 @@ class Unet(nn.Module):
             in_filters = [192, 320, 640, 768]
         else:
             raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(self.backbone))
-        out_filters = [64, 128, 256, 512]
+        out_filters = [64, 64, 64, 64]
 
         self.conv1 = nn.Conv2d(64, 1, kernel_size=1)
         self.conv2 = nn.Conv2d(64, 1, kernel_size=1)
@@ -290,8 +294,8 @@ if __name__ == '__main__':
     import torch
     from torchsummary import summary
 
-    x = torch.zeros(1, 3, 512, 512)
-    net = MyNet(backbone='resnet18', pretrained=False)
+    x = torch.zeros(2, 3, 512, 512)
+    net = MyNet(backbone='resnet50', pretrained=False)
     # model_resnet50 = resnet50(pretrained=False)
     y = net(x)
     for u in y:

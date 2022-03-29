@@ -113,33 +113,6 @@ import torch.optim as optim
 # right_disparity = 595.90 * 270 / (right_depth * 1000)
 
 
-# import torch.onnx
-# from model.unet_with_backbone import Unet
-#
-# batch_size = 1
-# model_path = 'logs/2022_03_16_00_37_29/ep100.pth'
-# model = Unet(backbone='resnet50', deformable_mode=False, in_channels=3)
-# input_shape = [512, 512]
-# model.load_state_dict(torch.load(model_path, map_location='cuda'))
-# model = model.eval()
-# # model = model.cuda()
-#
-# x = torch.randn(batch_size, 3, 512, 512, requires_grad=True)
-# torch_out = model(x)
-#
-# # Export the model
-# torch.onnx.export(model,  # model being run
-#                   x,  # model input (or a tuple for multiple inputs)
-#                   "logs/2022_03_16_00_37_29/ep100.onnx",  # where to save the model (can be a file or file-like object)
-#                   export_params=True,  # store the trained parameter weights inside the model file
-#                   opset_version=11,  # the ONNX version to export the model to
-#                   do_constant_folding=True,  # whether to execute constant folding for optimization
-#                   input_names=['input'],  # the model's input names
-#                   output_names=['output'],  # the model's output names
-#                   dynamic_axes={'input': {0: 'batch_size'},  # variable length axes
-#                                 'output': {0: 'batch_size'}})
-
-
 from argparse import ArgumentParser
 import json
 
@@ -308,14 +281,68 @@ import glob
 # plt.axis('off')
 # plt.show()
 
-import segmentation_models_pytorch as smp
-from torchsummary import summary
+# 使用其他模型
+# import segmentation_models_pytorch as smp
+# from torchsummary import summary
+#
+# model = smp.DeepLabV3(encoder_name='resnet18', decoder_channels=64, in_channels=1)
+# model = smp.Unet(encoder_name='resnet18').decoder
+#
+# x = torch.zeros(1, 3, 512, 512)
+# y = model(x)
+# for u in y:
+#     print(u.shape)
+# summary(model.to('cuda'), (1, 512, 512))
 
-model = smp.DeepLabV3(encoder_name='resnet18', decoder_channels=64, in_channels=1)
-model = smp.Unet(encoder_name='resnet18').decoder
 
-x = torch.zeros(1, 3, 512, 512)
-y = model(x)
-for u in y:
-    print(u.shape)
-summary(model.to('cuda'), (1, 512, 512))
+# pth转变为onnx模型
+from utils.utils import pth2onnx
+from predict import PredictModel
+
+config_path = 'logs/2022_03_27_21_48_23/2022_03_27_21_48_23_config.yaml'
+pth_path = 'logs/2022_03_27_21_48_23/ep100.pth'
+onnx_path = pth_path.replace('.pth', '.onnx')
+
+net = PredictModel(config_path=config_path, model_weights_path=pth_path).net
+pth2onnx(model=net, input_shape=[1, 3, 512, 512], onnx_path=onnx_path)
+
+# # 可视化特征图
+# sam1 = pr_net.get_feature_maps(input_image=img, layer_name='encoder.conv1')
+# fig = plt.figure(dpi=1000)
+# for i in range(len(sam1)):
+#     plt.subplot(8, 8, i + 1)
+#     im = plt.imshow(sam1[i], cmap='jet')
+#     plt.axis('off')
+#
+# fig.tight_layout()  # 调整整体空白
+# plt.subplots_adjust(right=0.95, wspace=-0.5, hspace=0.1)  # 调整子图间距
+# position = fig.add_axes([0.91, 0.12, 0.02, 0.78])  # 位置[左,下,右,上]
+# fig.colorbar(im, cax=position)
+#
+# plt.show()
+
+# 深度图到点云生成
+# exr_depth_path = '/home/ch5225/chaohua/oaisys/oaisys_tmp/2022-02-24-17-27-51/batch_0002/sensorRight/0007sensorRight_pinhole_depth_00.exr'
+# gt_depth = load_exr(exr_depth_path)
+# pc = point_cloud_generator(focal_length=595.90, scalingfactor=1.0)
+#
+# pc.rgb = col_seg
+# pc.depth = pr_depth
+# pc.calculate()
+# pc.write_ply('pc1.ply')
+# pc.show_point_cloud()
+
+# 可视化结果
+# plt.subplot(221)
+# plt.imshow(img)
+# plt.axis('off')
+# plt.subplot(222)
+# plt.imshow(pr_seg)
+# plt.axis('off')
+# plt.subplot(223)
+# plt.imshow(col_seg)
+# plt.axis('off')
+# plt.subplot(224)
+# plt.imshow(pr_depth)
+# plt.axis('off')
+# plt.show()

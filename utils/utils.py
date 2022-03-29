@@ -130,3 +130,29 @@ def restore_image_size(image, original_size):
     new_image = cv2.resize(new_image, (iw, ih), interpolation=cv2.INTER_LINEAR)
 
     return new_image
+
+
+# 将pytorch模型权重加载到模型，并导出onnx模型
+def pth2onnx(model, input_shape, onnx_path):
+    """
+    export onnx model from pytorch CNN model with weights loaded
+    :param model: pytorch CNN model
+    :param input_shape: model input tensor shape [N,C,H,W]
+    :param onnx_path:  the exported onnx model path
+    :return: None
+    """
+    import torch.onnx
+
+    model = model.eval()
+    in_tensor = torch.randn(input_shape, requires_grad=True).to('cuda' if torch.cuda.is_available() else 'cpu')
+
+    torch.onnx.export(model,  # model being run
+                      in_tensor,  # model input (or a tuple for multiple inputs)
+                      onnx_path,  # where to save the model (can be a file or file-like object)
+                      export_params=True,  # store the trained parameter weights inside the model file
+                      opset_version=11,  # the ONNX version to export the model to
+                      do_constant_folding=True,  # whether to execute constant folding for optimization
+                      input_names=['input'],  # the model's input names
+                      output_names=['output'],  # the model's output names
+                      dynamic_axes={'input': {0: 'batch_size'},  # variable length axes
+                                    'output': {0: 'batch_size'}})

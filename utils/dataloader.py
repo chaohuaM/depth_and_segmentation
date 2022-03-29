@@ -106,7 +106,7 @@ class RockDataset(Dataset):
                                       name.replace('rgb', 'pinhole_depth') + ".exr")
 
         # 以50%概率读取成灰度图 再转换成rgb，只有亮度信息
-        if rand() < 0.5:
+        if self.transform and rand() < 0.5:
             x_img = cv2.imread(img_path, 0)
             x_img = cv2.cvtColor(x_img, cv2.COLOR_GRAY2RGB)
         else:
@@ -139,7 +139,7 @@ class RockDataset(Dataset):
 
         return x_img, y_label, seg_labels, depth_img
 
-    def _get_random_data(self, image, label, depth, jitter=.3, hue=.1, sat=1.5, val=1.5):
+    def _get_random_data(self, image, label, depth, jitter=.3, hue=.1, sat=1.3, val=1.3):
         h, w, c = self.input_shape[0], self.input_shape[1], self.input_shape[2]
 
         if not self.transform:
@@ -157,14 +157,8 @@ class RockDataset(Dataset):
         # image-level, 整体变换对所有图像都要操作
         image, label, depth = image_level_transform(img_items, flip, jitter, [h, w])
 
-        # 为rgb图像时才应用pixel-level增强
-        if c == 1:
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         # pixel-level distortion image
         image = pixel_level_distort(image, hue, sat, val)
-
-        if c == 1:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
         return image, label, depth
 

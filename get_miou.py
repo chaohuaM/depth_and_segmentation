@@ -3,7 +3,7 @@ import os
 import cv2
 from tqdm import tqdm
 
-from predict import pr_Unet, blend_image, show_depth
+from predict import PredictModel, blend_image, show_depth
 from utils.utils_metrics import compute_mIoU, show_results
 
 '''
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         print("Load model.")
         config_path = 'logs/2022_03_11_17_49_48/2022_03_11_17_49_48_config.yaml'
         model_weights_path = 'logs/2022_03_11_17_49_48/ep100.pth'
-        pr_unet = pr_Unet(config_path=config_path, model_weights_path=model_weights_path)
+        pr_net = PredictModel(config_path=config_path, model_weights_path=model_weights_path)
         print("Load model done.")
 
         print("Get predict result.")
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             img = cv2.imread(image_path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            pr_seg, pr_depth = pr_unet.detect_image(img)
+            pr_seg, pr_depth = pr_net.detect_image(img)
 
             cv2.imwrite(os.path.join(pred_dir, image_id + ".png"), pr_seg)
 
