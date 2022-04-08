@@ -8,10 +8,27 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
+EPSILON = 1e-15
+
+
+def binary_mean_iou(logits: torch.Tensor, targets: torch.Tensor, threshold=0.5) -> torch.Tensor:
+    output = (logits > threshold).int()
+
+    if output.shape != targets.shape:
+        targets = torch.squeeze(targets, 1)
+
+    intersection = (targets * output).sum()
+
+    union = targets.sum() + output.sum() - intersection
+
+    result = (intersection + EPSILON) / (union + EPSILON)
+
+    return result
+
 
 def f_score(inputs, target, beta=1, smooth=1e-5, threhold=0.5):
     n, c, h, w = inputs.size()
-    nt, ht, wt, ct = target.size()
+    nt, ct, ht, wt = target.size()
     if h != ht and w != wt:
         inputs = F.interpolate(inputs, size=(ht, wt), mode="bilinear", align_corners=True)
 
@@ -22,9 +39,9 @@ def f_score(inputs, target, beta=1, smooth=1e-5, threhold=0.5):
     #   计算dice系数
     # --------------------------------------------#
     temp_inputs = torch.gt(temp_inputs, threhold).float()
-    tp = torch.sum(temp_target[..., :-1] * temp_inputs, axis=[0, 1])
+    tp = torch.sum(temp_target * temp_inputs, axis=[0, 1])
     fp = torch.sum(temp_inputs, axis=[0, 1]) - tp
-    fn = torch.sum(temp_target[..., :-1], axis=[0, 1]) - tp
+    fn = torch.sum(temp_target, axis=[0, 1]) - tp
 
     score = ((1 + beta ** 2) * tp + smooth) / ((1 + beta ** 2) * tp + beta ** 2 * fn + fp + smooth)
     score = torch.mean(score)

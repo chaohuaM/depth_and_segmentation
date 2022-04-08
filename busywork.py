@@ -4,22 +4,133 @@ import numpy as np
 import torch
 import os
 import torch.optim as optim
+import glob
+from predict_model import blend_image, PredictModel
+
+
+def normalization(data):
+    mi = np.min(data)
+    ma = np.max(data)
+    _range = ma
+    return data / _range
+
+
+def save_png(img_path, data):
+    cv2.imwrite(img_path, data)
+
+
+def exr2png(exr_path, png_path):
+    # 使用openexr包读取
+    # tiff_file = exr2tiff(file_path)
+    # 使用opencv 读取
+    image = cv2.imread(exr_path, cv2.IMREAD_UNCHANGED)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    image[image == np.max(image)] = 0
+    image[image > 10] = 10
+
+    # img1 = image
+    img2 = normalization(image) * 255
+    img = cv2.applyColorMap(img2.astype(np.uint8), cv2.COLORMAP_MAGMA)
+
+    # img3 = Z_ScoreNormalization(image)
+    #
+    # eq1 = cv2.equalizeHist(img1.astype('uint8'))
+    # eq2 = cv2.equalizeHist((img2 * 255).astype('uint8'))
+    # eq3 = cv2.equalizeHist((img3 * 255).astype('uint8'))
+
+    # cv2.imshow('depth', img)
+    # cv2.waitKey()
+
+    save_png(png_path, img)
+
+
+# # 转换深度图
+# file_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
+#
+# depth_exr_dir = file_dir + '/depth_exr'
+# depth_png_dir = file_dir + '/depth_10m'
+#
+# if not os.path.exists(depth_png_dir): os.makedirs(depth_png_dir)
+#
+# exr_list = glob.glob(depth_exr_dir + '/*')
+# count = 0
+# for exr_img in exr_list:
+#     img_name = exr_img.split('/')[-1]
+#     png_path = depth_png_dir + '/' + img_name.replace('exr', 'png')
+#
+#     exr2png(exr_img, png_path)
+#
+#     count += 1
+#     if count % 100 == 0: print(count)
+
+
+# # 将标签中的rgb值转为为0和1
+# img_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/'
+# label_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01/'
+# new_label_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01_label/'
+# label_vis_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01_label_vis/'
+#
+# if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+# if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
+#
+# count = 0
+# for img_path in glob.glob(label_dir + '*.png'):
+#     img_name = img_path.split('/')[-1]
+#     img = cv2.imread(img_path, 0)
+#
+#     img[img <= 100] = 0
+#     img[img > 100] = 1
+#
+#     save_png(new_label_dir + '/' + img_name, img)
+#
+#     raw_img = cv2.imread(img_dir + '/' + img_name)
+#     vis_img = blend_image(raw_img, img)
+#
+#     save_png(label_vis_dir + '/' + img_name, vis_img)
+#
+#     count += 1
+#
+#     if count % 20 == 0:
+#         print(count)
+
 
 # 测试dataloader函数
 # from torch.utils.data import DataLoader
-# from utils.dataloader import RockDataset, rock_dataset_collate
+# from utils.dataloader import RockDataset, rock_dataset_collate, rock_dataset_collate_pl
 #
-# train_lines = ['1306sensorRight_rgb_00', '4111sensorRight_rgb_00', '0752sensorLeft_rgb_00', '1080sensorLeft_rgb_00',
-#                '3940sensorLeft_rgb_00', '4465sensorRight_rgb_00', '1665sensorRight_rgb_00', '3687sensorLeft_rgb_00',
-#                '2669sensorLeft_rgb_00', '1702sensorLeft_rgb_00', '4359sensorLeft_rgb_00', '4550sensorRight_rgb_00']
+# train_lines = ['1306sensorRight', '4111sensorRight', '0752sensorLeft', '1080sensorLeft',
+#                '3940sensorLeft', '4465sensorRight', '1665sensorRight', '3687sensorLeft',
+#                '2669sensorLeft', '1702sensorLeft', '4359sensorLeft', '4550sensorRight']
 # input_shape = [256, 256]
-# input_channel = 1
+# input_channel = 3
 # input_shape.append(input_channel)
 # num_classes = 2
 # data_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
 # train_dataset = RockDataset(train_lines, input_shape, num_classes, False, data_dir)
-# gen = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=2, pin_memory=True,
-#                  drop_last=True, collate_fn=rock_dataset_collate)
+# train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=4, pin_memory=True,
+#                               drop_last=True)
+
+# for gen in train_dataloader:
+#     print(gen[0].size())
+
+# 测试pytorch-lightning 方式训练
+import pytorch_lightning as pl
+from model.create_model import MyModel
+
+# model = MyModel('Unet', encoder_name='resnet50', in_channels=3, num_classes=2, encoder_weights='imagenet')
+# trainer = pl.Trainer(gpus=1, max_epochs=100)
+#
+# trainer.fit(
+#     model,
+#     train_dataloaders=train_dataloader,
+# )
+
+# 测试pytorch-lightning test
+# moel = MyModel.load_from_checkpoint(checkpoint_path='logs/Unet/2022_04_07_11_13_21/checkpoints/epoch=34-step=455.ckpt',
+#                                     hparams_file='logs/Unet/2022_04_07_11_13_21/hparams.yaml'
+#                                     ).model
+
 #
 # for batch in gen:
 #     depths = torch.from_numpy(batch[3]).type(torch.FloatTensor)
@@ -116,7 +227,6 @@ import torch.optim as optim
 from argparse import ArgumentParser
 import json
 
-
 # parser = ArgumentParser()
 # parser.add_argument('--seed', type=int, default=8)
 # parser.add_argument('--resume', type=str, default='a/b/c.ckpt')
@@ -197,9 +307,6 @@ import json
 # plt.subplot(122)
 # plt.imshow(pr_depth)
 # plt.show()
-
-def save_png(img_path, data):
-    cv2.imwrite(img_path, data)
 
 
 # 将标签中的rgb值转为为0和1
@@ -296,15 +403,19 @@ import glob
 
 
 # pth转变为onnx模型
-from utils.utils import pth2onnx
-from predict import PredictModel
+# from utils.utils import pth2onnx
+# from predict import PredictModel
+# from model.unet_dual_decoder import UnetDualDecoder
 
-config_path = 'logs/2022_03_27_21_48_23/2022_03_27_21_48_23_config.yaml'
-pth_path = 'logs/2022_03_27_21_48_23/ep100.pth'
-onnx_path = pth_path.replace('.pth', '.onnx')
+# config_path = 'logs/2022_03_27_21_48_23/2022_03_27_21_48_23_config.yaml'
+# pth_path = 'logs/2022_03_27_21_48_23/ep100.pth'
+# onnx_path = pth_path.replace('.pth', '.onnx')
+#
+# net = PredictModel(config_path=config_path, model_weights_path=pth_path).net
+# pth2onnx(model=net, input_shape=[1, 3, 512, 512], onnx_path=onnx_path)
 
-net = PredictModel(config_path=config_path, model_weights_path=pth_path).net
-pth2onnx(model=net, input_shape=[1, 3, 512, 512], onnx_path=onnx_path)
+# model = UnetDualDecoder(backbone='resnet18').cuda()
+# pth2onnx(model, input_shape=[1, 3, 512, 512], onnx_path='test.onnx')
 
 # # 可视化特征图
 # sam1 = pr_net.get_feature_maps(input_image=img, layer_name='encoder.conv1')
@@ -346,3 +457,44 @@ pth2onnx(model=net, input_shape=[1, 3, 512, 512], onnx_path=onnx_path)
 # plt.imshow(pr_depth)
 # plt.axis('off')
 # plt.show()
+
+# 读取mesh并进行可视化
+# import open3d as o3d
+#
+# obj_path = '/home/ch5225/Downloads/downthemall/ZLF_0082_0674201499M818RAS_N0032430ZCAM03130_1100LUJ02.obj'
+# mesh = o3d.io.read_triangle_mesh(obj_path, enable_post_processing=True)
+#
+# rotate_mat = np.array([[1.0, 0.0, 0.0],
+#                        [0.0, -1.0, 0.0],
+#                        [0.0, 0.0, -1.0]])
+#
+# mesh = mesh.rotate(rotate_mat)
+#
+# print(np.asarray(mesh.vertices).shape)
+# print(np.asarray(mesh.triangles).shape)
+# texture = np.asarray(mesh.triangle_uvs)
+# print("")
+#
+# print("Try to render a mesh with normals (exist: " +
+#       str(mesh.has_vertex_normals()) + ") and colors (exist: " +
+#       str(mesh.has_vertex_colors()) + ")")
+# o3d.visualization.draw_geometries([mesh])
+
+# 输出网络层的名字
+# config_path = 'logs/2022_03_29_12_05_03/2022_03_29_12_05_03_config.yaml'
+# model_weights_path = os.path.join(os.path.dirname(config_path), 'ep100.pth')
+# print(model_weights_path)
+# pr_net = PredictModel(config_path=config_path, model_weights_path=model_weights_path)
+#
+# module_names = []
+# for name, layer in pr_net.net.named_modules():
+#     module_names.append(name)
+#
+# print(module_names)
+
+# 测试smp模块
+# from torchsummary import summary
+# import segmentation_models_pytorch as smp
+#
+# model = smp.create_model('Unet', encoder_name='resnet18', encoder_weights=None, in_channels=3, classes=2)
+# summary(model.to('cuda'), (3, 512, 512))

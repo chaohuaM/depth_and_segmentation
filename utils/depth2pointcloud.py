@@ -1,5 +1,5 @@
 import numpy as np
-from open3d import read_point_cloud, draw_geometries
+import open3d.open3d as o3d
 import time
 from utils.utils import load_exr
 import cv2
@@ -92,8 +92,8 @@ class point_cloud_generator:
         print("Write into .ply file Done.", t2 - t1)
 
     def show_point_cloud(self):
-        pcd = read_point_cloud(self.pc_file)
-        draw_geometries([pcd])
+        pcd = o3d.io.read_point_cloud(self.pc_file)
+        o3d.visualization.draw_geometries([pcd])
 
 
 if __name__ == '__main__':
@@ -111,4 +111,4 @@ if __name__ == '__main__':
     a.write_ply('pc1.ply')
     a.show_point_cloud()
     df = a.df
-    np.save('pc.npy', df)
+    np.save('../pc.npy', df)

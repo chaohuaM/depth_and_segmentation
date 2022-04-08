@@ -5,7 +5,7 @@ from model.resnet import *
 from model.vgg import VGG16
 
 
-class SpatialSEModule(nn.Module):
+class DepthSpatialAttentionModule(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, 1, 1)
@@ -13,47 +13,48 @@ class SpatialSEModule(nn.Module):
         
     def forward(self, input):
         output = self.conv(input)
-        sam_mask = self.norm(output)
+        dsa_mask = self.norm(output)
 
-        return sam_mask
+        return dsa_mask
 
 
-class ChannelSEModule(nn.Module):
-    def __init__(self, in_channels, reduction=16):
+class ConvBnRelu2d(nn.Module):
+    def __init__(self, in_size, out_size, with_bn=True):
         super().__init__()
-        self.cSE = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(in_channels, in_channels // reduction, 1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // reduction, in_channels, 1),
-            nn.Sigmoid(),
-        )
-    
-    def forward(self, in_layers):
-        return in_layers * self.cSE(in_layers)
+        self.conv = nn.Conv2d(in_size, out_size, kernel_size=3, padding=1)
+        if with_bn:
+            self.bn = nn.BatchNorm2d(out_size)
+        else:
+            self.bn = None
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, inputs):
+        outputs = self.conv(inputs)
+        if self.bn is not None:
+            outputs = self.bn(outputs)
+        outputs = self.relu(outputs)
+
+        return outputs
 
 
 class UpBlocks(nn.Module):
     def __init__(self, in_size, out_size):
         super(UpBlocks, self).__init__()
-        self.conv1 = nn.Conv2d(in_size, out_size, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(out_size, out_size, kernel_size=3, padding=1)
-        self.up = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = ConvBnRelu2d(in_size, out_size)
+        self.conv2 = ConvBnRelu2d(out_size, out_size)
 
     def forward(self, inputs1, inputs2, sam=None):
-        outputs = torch.cat([inputs1, self.up(inputs2)], 1)
+        inputs = torch.cat([inputs1, self.up(inputs2)], 1)
         if sam is not None:
-            outputs = outputs * sam
-        outputs = self.conv1(outputs)
-        outputs = self.relu(outputs)
+            inputs = inputs * sam
+        outputs = self.conv1(inputs)
         outputs = self.conv2(outputs)
-        outputs = self.relu(outputs)
+
         return outputs
 
 
 class DecoderBranch(nn.Module):
-    def __init__(self, in_filters, out_filters, is_sem=False):
+    def __init__(self, in_filters, out_filters):
         super(DecoderBranch, self).__init__()
 
         # upsampling
@@ -109,13 +110,12 @@ class MyNet(nn.Module):
         # upsampling
         # dual decoder branch
         self.sem_branch = DecoderBranch(in_filters, out_filters)
-
-        self.sam1 = SpatialSEModule(out_filters[0])
-        self.sam2 = SpatialSEModule(out_filters[1])
-        self.sam3 = SpatialSEModule(out_filters[2])
-        self.sam4 = SpatialSEModule(out_filters[3])
-
         self.depth_branch = DecoderBranch(in_filters, out_filters)
+
+        self.sam1 = DepthSpatialAttentionModule(out_filters[0])
+        self.sam2 = DepthSpatialAttentionModule(out_filters[1])
+        self.sam3 = DepthSpatialAttentionModule(out_filters[2])
+        self.sam4 = DepthSpatialAttentionModule(out_filters[3])
 
         if 'resnet' in self.backbone:
             self.up_conv = nn.Sequential(
@@ -165,110 +165,7 @@ class MyNet(nn.Module):
             param.requires_grad = True
 
 
-class Unet(nn.Module):
-    def __init__(self, in_channels=3, num_classes=2, pretrained=False, backbone='vgg16'):
-        super(Unet, self).__init__()
-
-        self.backbone = backbone
-
-        if self.backbone == 'vgg16':
-            self.vgg = VGG16(in_channels=in_channels, pretrained=pretrained)
-            in_filters = [192, 384, 768, 1024]
-        elif self.backbone == "resnet50":
-            self.resnet = resnet50(in_channels=in_channels, pretrained=pretrained)
-            in_filters = [192, 512, 1024, 3072]
-        elif self.backbone == "resnet18":
-            self.resnet = resnet18(in_channels=in_channels, pretrained=pretrained)
-            in_filters = [192, 320, 640, 768]
-        elif self.backbone == "resnet34":
-            self.resnet = resnet34(in_channels=in_channels, pretrained=pretrained)
-            in_filters = [192, 320, 640, 768]
-        else:
-            raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(self.backbone))
-        out_filters = [64, 64, 64, 64]
-
-        self.conv1 = nn.Conv2d(64, 1, kernel_size=1)
-        self.conv2 = nn.Conv2d(64, 1, kernel_size=1)
-
-        # upsampling
-        # 64,64,512
-        self.up_sem_concat4 = UpBlocks(in_filters[3], out_filters[3])
-        # 128,128,256
-        self.up_sem_concat3 = UpBlocks(in_filters[2], out_filters[2])
-        # 256,256,128
-        self.up_sem_concat2 = UpBlocks(in_filters[1], out_filters[1])
-        # 512,512,64
-        self.up_sem_concat1 = UpBlocks(in_filters[0], out_filters[0])
-
-        self.up_depth_concat4 = UpBlocks(in_filters[3], out_filters[3])
-        # 128,128,256
-        self.up_depth_concat3 = UpBlocks(in_filters[2], out_filters[2])
-        # 256,256,128
-        self.up_depth_concat2 = UpBlocks(in_filters[1], out_filters[1])
-        # 512,512,64
-        self.up_depth_concat1 = UpBlocks(in_filters[0], out_filters[0])
-
-        if 'resnet' in self.backbone:
-            self.up_conv = nn.Sequential(
-                nn.UpsamplingBilinear2d(scale_factor=2),
-                nn.Conv2d(out_filters[0], out_filters[0], kernel_size=3, padding=1),
-                nn.ReLU(),
-            )
-        else:
-            self.up_conv = None
-
-        self.final_sem = nn.Conv2d(out_filters[0], num_classes, 1)
-        self.final_depth = nn.Conv2d(out_filters[0], 1, 1)
-
-    def forward(self, inputs):
-        if self.backbone == "vgg":
-            [feat1, feat2, feat3, feat4, feat5] = self.vgg.forward(inputs)
-        elif 'resnet' in self.backbone:
-            [feat1, feat2, feat3, feat4, feat5] = self.resnet.forward(inputs)
-
-        depth1 = self.conv1(feat1)
-        depth2 = self.conv2(feat2)
-
-        sem_up4 = self.up_sem_concat4(feat4, feat5)
-        sem_up3 = self.up_sem_concat3(feat3, sem_up4)
-        sem_up2 = self.up_sem_concat2(feat2, sem_up3)
-        sem_up1 = self.up_sem_concat1(feat1, sem_up2)
-
-        if self.up_conv is not None:
-            sem_up1 = self.up_conv(sem_up1)
-
-        final_sem = self.final_sem(sem_up1)
-
-        depth_up4 = self.up_depth_concat4(feat4, feat5)
-        depth_up3 = self.up_depth_concat3(feat3, depth_up4)
-        depth_up2 = self.up_depth_concat2(feat2, depth_up3)
-        depth_up1 = self.up_depth_concat1(feat1, depth_up2)
-
-        if self.up_conv is not None:
-            depth_up1 = self.up_conv(depth_up1)
-
-        final_depth = self.final_depth(depth_up1)
-
-        return final_sem, final_depth  # , depth1, depth2
-
-    def freeze_backbone(self):
-        if self.backbone == "vgg":
-            for param in self.vgg.parameters():
-                param.requires_grad = False
-        elif 'resnet' in self.backbone:
-            for param in self.resnet.parameters():
-                param.requires_grad = False
-
-    def unfreeze_backbone(self):
-        if self.backbone == "vgg":
-            for param in self.vgg.parameters():
-                param.requires_grad = True
-        elif 'resnet' in self.backbone:
-            for param in self.resnet.parameters():
-                param.requires_grad = True
-
-
-def weights_init(net, init_type='normal', init_gain=0.02):
+def weights_init(net, init_type='kaiming', init_gain=0.02):
     def init_func(m):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and classname.find('Conv') != -1:
@@ -295,7 +192,7 @@ if __name__ == '__main__':
     from torchsummary import summary
 
     x = torch.zeros(2, 3, 512, 512)
-    net = MyNet(backbone='resnet50', pretrained=False)
+    net = MyNet(backbone='resnet18', pretrained=False)
     # model_resnet50 = resnet50(pretrained=False)
     y = net(x)
     for u in y:

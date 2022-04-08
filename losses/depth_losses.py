@@ -46,7 +46,7 @@ def _mask_input(input, mask=None):
     return input, count
 
 
-def BerHu_Loss(z, z_fake, mask=None):
+def BerHu_Loss(z_fake, z, mask=None):
     x = z_fake - z
     abs_x = torch.abs(x)
     c = torch.max(abs_x).item() / 5.0
