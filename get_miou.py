@@ -64,8 +64,8 @@ if __name__ == "__main__":
             os.makedirs(pred_depth_dir)
 
         print("Load model.")
-        config_path = 'logs/Unet/2022_04_07_17_26_07/hparams.yaml'
-        ckpt_path = 'logs/Unet/2022_04_07_17_26_07/checkpoints/epoch=49-step=8450.ckpt'
+        config_path = 'logs/unet/2022_04_07_17_26_07/hparams.yaml'
+        ckpt_path = 'logs/unet/2022_04_07_17_26_07/checkpoints/epoch=49-step=8450.ckpt'
 
         pr_net = create_predict_model(checkpoint_path=ckpt_path, config_path=config_path)
         print("Load model done.")

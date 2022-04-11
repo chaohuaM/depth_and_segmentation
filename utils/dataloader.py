@@ -136,7 +136,7 @@ class RockDataset(Dataset):
         # -------------------------------------------------------#
         #   转化成one_hot的形式
         # -------------------------------------------------------#
-        seg_labels = np.eye(self.num_classes+1)[y_label.reshape([-1])][:, 1:] # 丢弃第一类，是背景类
+        seg_labels = np.eye(self.num_classes+1)[y_label.reshape([-1])][:, 1:]  # 丢弃第一类，是背景类
         seg_labels = seg_labels.reshape((self.num_classes, int(self.input_shape[0]), int(self.input_shape[1])))
 
         depth_img = np.array(depth_img, np.float32)

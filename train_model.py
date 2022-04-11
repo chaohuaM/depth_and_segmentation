@@ -9,9 +9,10 @@ from utils.dataloader import RockDataset
 
 import argparse
 from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
-MODEL_NAME = ['Unet', 'DeepLab', 'unet_dual_decoder', 'unet_dual_decoder_with_sa']
+
+MODEL_NAME = ['unet', 'deeplabv3plus', 'unet_dual_decoder', 'unet_dual_decoder_with_sa']
 
 
 def parse_argument():
@@ -23,7 +24,7 @@ def parse_argument():
                         help='dataset_path', required=False)
 
     # 模型相关
-    parser.add_argument('--model_name', default='unet_dual_decoder_with_sa', type=str,
+    parser.add_argument('--model_name', default='unet', type=str,
                         help='model architecture', required=False)
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help='model backbone', required=False)
@@ -66,7 +67,33 @@ def parse_argument():
     return args
 
 
-def train_model(args):
+def train_model():
+    parser = argparse.ArgumentParser(description='Depth and Segmentation')
+
+    parser = MyModel.add_model_specific_args(parser)
+    model_parser, _ = parser.parse_known_args()
+    model_args = vars(model_parser)
+
+    # 路径相关
+    parser.add_argument('--timestamp', default=datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S'),
+                        type=str, help="choose running mode, train or predict")
+    parser.add_argument('--log_dir', type=str, help='log save directory', required=False,
+                        default='logs/')
+    parser.add_argument('--dataset_path', default='dataset/oaisys_data', type=str,
+                        help='dataset_path', required=False)
+
+    # 系统相关
+    parser.add_argument('--seed', default=2022, help='pl training seed for reproducibility', required=False)
+    parser.add_argument('--gpus', default=1, help='cuda availability', nargs="*", type=int, required=False)
+    parser.add_argument('--gpu_bs', default=2, nargs="*", type=int, required=False,
+                        help='the proper batch sizes for the gpu, set smaller number when OOM ')
+    parser.add_argument('--num_workers', default=8, type=int, required=False)
+
+    parser.add_argument('--mode', metavar='train or predict', default='train', type=str,
+                        help="choose running mode, train or predict")
+
+    args = parser.parse_args()
+
     pl.seed_everything(args.seed)
     # -------------------------------#
     #   是否使用Cuda
@@ -83,31 +110,21 @@ def train_model(args):
     #   主干网络选择
     #   vgg、resnet50、resnet18
     # -------------------------------#
-    model_name = args.model_name
+    model_name = args.model_name.lower()
     backbone = args.backbone
-    model_path = args.model_path
     # ------------------------------#
     #   输入图片的大小
     # ------------------------------#
     input_shape = args.input_shape
     in_channels = args.in_channels
-    transform = args.transform
+    data_transform = args.data_transform
     batch_size = args.batch_size
+    gpu_bs = args.gpu_bs
+    accmulate_bs = int(batch_size/gpu_bs)
     # ------------------------------#
     #   数据集路径
     # ------------------------------#
     dataset_path = args.dataset_path
-    # ---------------------------------------------------------------------#
-    #   建议选项：
-    #   种类少（几类）时，设置为True
-    #   种类多（十几类）时，如果batch_size比较大（10以上），那么设置为True
-    #   种类多（十几类）时，如果batch_size比较小（10以下），那么设置为False
-    # ---------------------------------------------------------------------#
-    dice_loss = args.dice_loss
-    # ---------------------------------------------------------------------#
-    #   是否使用focal loss来防止正负样本不平衡
-    # ---------------------------------------------------------------------#
-    focal_loss = args.focal_loss
     # ------------------------------------------------------#
     #   用于设置是否使用多线程读取数据
     #   开启后会加快数据读取速度，但是会占用更多内存
@@ -120,9 +137,13 @@ def train_model(args):
     tb_logger = pl_loggers.TensorBoardLogger(save_dir=log_path, name=model_name, version=timestamp)
     csv_logger = pl_loggers.CSVLogger(save_dir=log_path, name=model_name,  version=timestamp)
 
-    input_shape.append(in_channels)
+    ckpt_callback = ModelCheckpoint(save_top_k=3,
+                                    monitor="val_iou",
+                                    mode="max",
+                                    filename="{epoch}-{val_iou:.2f}")
+    lr_monitor = LearningRateMonitor(logging_interval='step')
 
-    model = MyModel(model_name=model_name, backbone=backbone, in_channels=in_channels, num_classes=num_classes)
+    data_shape = [input_shape[0], input_shape[1], in_channels]
 
     # ---------------------------#
     #   读取数据集对应的txt
@@ -133,25 +154,32 @@ def train_model(args):
     with open(os.path.join(dataset_path, "ImageSets/val.txt"), "r") as f:
         val_lines = f.readlines()
 
-    train_dataset = RockDataset(train_lines, input_shape, num_classes, transform, dataset_path)
-    val_dataset = RockDataset(val_lines, input_shape, num_classes, False, dataset_path)
-    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers,
+    train_dataset = RockDataset(train_lines, data_shape, num_classes, data_transform, dataset_path)
+    val_dataset = RockDataset(val_lines, data_shape, num_classes, False, dataset_path)
+    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=gpu_bs, num_workers=num_workers,
                                   pin_memory=True, drop_last=True)
-    val_dataloader = DataLoader(val_dataset, shuffle=False, batch_size=batch_size, num_workers=num_workers,
+    val_dataloader = DataLoader(val_dataset, shuffle=False, batch_size=gpu_bs, num_workers=num_workers,
                                 pin_memory=True, drop_last=True)
 
-    trainer = pl.Trainer(gpus=gpus, max_epochs=epoch,
-                         accumulate_grad_batches=16,
-                         logger=[tb_logger, csv_logger],
-                         default_root_dir=log_path)
+    model = MyModel(**model_args)
+    print("model set up with following hyper parameters:")
+    print(model.hparams)
 
+    trainer = pl.Trainer(default_root_dir=log_path,
+                         gpus=gpus, max_epochs=epoch,
+                         accumulate_grad_batches=accmulate_bs,
+                         logger=[tb_logger, csv_logger],
+                         callbacks=[ckpt_callback, lr_monitor])
+
+    print("---------------- start training --------------")
     trainer.fit(
         model,
         train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader
-    )
+        val_dataloaders=val_dataloader)
+
+    print(f"best model path:{ckpt_callback.best_model_path}, score:{ckpt_callback.best_model_score}")
 
 
 if __name__ == '__main__':
-    options = parse_argument()
-    train_model(options)
+
+    train_model()
