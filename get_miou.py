@@ -1,4 +1,6 @@
 import os
+import yaml
+import glob
 
 import cv2
 from tqdm import tqdm
@@ -36,72 +38,80 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    dataset_dir = '/home/ch5225/chaohua/MarsData/Data/Rock-B/'
-    image_dir = os.path.join(dataset_dir, 'images')
-    gt_dir = os.path.join(dataset_dir, "label_mask")
+    model_paths = glob.glob("logs/*/*/*/*")
+    for model_path in model_paths:
+        log_path = model_path[:-38] + model_path.split("/")[-1][:-5]
+        config_path = model_path[:-38]+"hparams.yaml"
+        ckpt_path = model_path
 
-    # 输出路径设置
-    miou_out_path = dataset_dir + "unet-"+input_type+"-miou/"
-    pred_dir = os.path.join(miou_out_path, 'detection-results')
+        with open(config_path, 'r') as f:
+            config_params = yaml.safe_load(f)
 
-    # 有val.txt的时候
-    # image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
-    # 直接读取文件夹里的文件名
-    image_ids = os.listdir(image_dir)
-    image_ids = [image_id[:-4] for image_id in image_ids]
+        model_name = config_params['model_name']
+        backbone = config_params['backbone']
+        in_channels = config_params['in_channels']
 
-    if miou_mode == 0 or miou_mode == 1:
-        if not os.path.exists(pred_dir):
-            os.makedirs(pred_dir)
+        dataset_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/'
+        image_dir = os.path.join(dataset_dir, 'rgb')
+        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
-        pred_col_dir = os.path.join(miou_out_path, 'detection-col-results')
-        pred_depth_dir = os.path.join(miou_out_path, 'detection-depth-results')
+        # 输出路径设置
+        miou_out_path = dataset_dir + log_path
+        pred_dir = os.path.join(miou_out_path, 'detection-results')
 
-        if not os.path.exists(pred_col_dir):
-            os.makedirs(pred_col_dir)
+        # 有val.txt的时候
+        image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
+        # 直接读取文件夹里的文件名
+        # image_ids = os.listdir(image_dir)
+        # image_ids = [image_id[:-4] for image_id in image_ids]
 
-        if not os.path.exists(pred_depth_dir):
-            os.makedirs(pred_depth_dir)
+        if miou_mode == 0 or miou_mode == 1:
+            if not os.path.exists(pred_dir):
+                os.makedirs(pred_dir)
 
-        print("Load model.")
-        config_path = 'logs/unet/2022_04_07_17_26_07/hparams.yaml'
-        ckpt_path = 'logs/unet/2022_04_07_17_26_07/checkpoints/epoch=49-step=8450.ckpt'
+            pred_col_dir = os.path.join(miou_out_path, 'detection-col-results')
+            pred_depth_dir = os.path.join(miou_out_path, 'detection-depth-results')
 
-        pr_net = create_predict_model(checkpoint_path=ckpt_path, config_path=config_path)
-        print("Load model done.")
+            if not os.path.exists(pred_col_dir):
+                os.makedirs(pred_col_dir)
 
-        print("Get predict result.")
-        for image_id in tqdm(image_ids):
-            image_path = os.path.join(image_dir, image_id + '.png')
-            if input_type == 'rgb':
-                img = cv2.imread(image_path, 1)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            else:
-                img = cv2.imread(image_path, 0)
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            if not os.path.exists(pred_depth_dir):
+                os.makedirs(pred_depth_dir)
 
+            pr_net = create_predict_model(checkpoint_path=ckpt_path, config_path=config_path)
+            print("Load model done.")
 
-            pr_outputs = pr_net.detect_image(img)
+            print("Get predict result.")
+            for image_id in tqdm(image_ids):
+                image_path = os.path.join(image_dir, image_id + '.png')
+                if input_type == 'rgb':
+                    img = cv2.imread(image_path, 1)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                else:
+                    img = cv2.imread(image_path, 0)
+                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
-            # blend混合显示
-            pr_seg = pr_outputs[0]
+                pr_outputs = pr_net.detect_image(img)
 
-            cv2.imwrite(os.path.join(pred_dir, image_id + ".png"), pr_seg)
+                # blend混合显示
+                pr_seg = pr_outputs[0]
 
-            col_seg = blend_image(img, pr_seg, 0.3)
-            cv2.imwrite(os.path.join(pred_col_dir, image_id + ".png"), cv2.cvtColor(col_seg, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(os.path.join(pred_dir, image_id + ".png"), pr_seg)
 
-            if len(pr_outputs) > 1:
-                pr_depth = pr_outputs[1]
-                col_depth = show_depth(pr_depth)
+                col_seg = blend_image(img, pr_seg, 0.3)
+                cv2.imwrite(os.path.join(pred_col_dir, image_id + ".png"), cv2.cvtColor(col_seg, cv2.COLOR_RGB2BGR))
 
-                cv2.imwrite(os.path.join(pred_depth_dir, image_id + ".png"), col_depth)
+                if len(pr_outputs) > 1:
+                    pr_depth = pr_outputs[1]
+                    col_depth = show_depth(pr_depth)
 
-        print("Get predict result done.")
+                    cv2.imwrite(os.path.join(pred_depth_dir, image_id + ".png"), col_depth)
 
-    if miou_mode == 0 or miou_mode == 2:
-        print("Get miou.")
-        hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes,
-                                                        name_classes)  # 执行计算mIoU的函数
-        print("Get miou done.")
-        show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)
+            print("Get predict result done.")
+
+        if miou_mode == 0 or miou_mode == 2:
+            print("Get miou.")
+            hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes,
+                                                            name_classes)  # 执行计算mIoU的函数
+            print("Get miou done.")
+            show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)

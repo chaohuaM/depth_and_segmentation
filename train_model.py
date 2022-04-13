@@ -85,9 +85,9 @@ def train_model():
     # 系统相关
     parser.add_argument('--seed', default=2022, help='pl training seed for reproducibility', required=False)
     parser.add_argument('--gpus', default=1, help='cuda availability', nargs="*", type=int, required=False)
-    parser.add_argument('--gpu_bs', default=2, nargs="*", type=int, required=False,
+    parser.add_argument('--gpu_bs', default=2, type=int, required=False,
                         help='the proper batch sizes for the gpu, set smaller number when OOM ')
-    parser.add_argument('--num_workers', default=8, type=int, required=False)
+    parser.add_argument('--num_workers', default=6, type=int, required=False)
 
     parser.add_argument('--mode', metavar='train or predict', default='train', type=str,
                         help="choose running mode, train or predict")

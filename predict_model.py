@@ -79,18 +79,18 @@ class PredictModel(object):
                 for name, value in config_params.items():
                     setattr(self, name, value)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.net = model.to(self.device)
+        self.net = model.to(self.device).eval()
 
     # ---------------------------------------------------#
     #   检测图片
     # ---------------------------------------------------#
     def detect_image(self, image):
         # ---------------------------------------------------------#
-        #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
-        #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
+        #   代码仅仅支持输入RGB图像的预测，所有其它类型的图像都会转化成RGB
         # ---------------------------------------------------------#
-        if len(image.shape) != 3:
-            img = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        assert len(image.shape) == 3, "image.shape != 3"
+        if self.in_channels == 1:
+            img = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
             img = image
         # ---------------------------------------------------#

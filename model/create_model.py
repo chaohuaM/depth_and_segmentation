@@ -92,8 +92,8 @@ class MyModel(pl.LightningModule):
         for output in outputs:
             total_iou += output['iou']
 
-        self.log(f"{stage}_f1_score", self.f1_score.compute(), logger=True, on_epoch=True)
-        self.log(f"{stage}_iou", total_iou / len(outputs), logger=True, on_epoch=True)
+        self.log(f"{stage}_f1_score", self.f1_score.compute(), logger=True)
+        self.log(f"{stage}_iou", total_iou / len(outputs), logger=True)
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")
@@ -122,7 +122,7 @@ class MyModel(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("MyModel")
         # 模型相关
-        parser.add_argument('--model_name', default='unet_dual_decoder_with_sa', type=str,
+        parser.add_argument('--model_name', default='deeplabv3plus', type=str,
                             help='model architecture', required=False)
         parser.add_argument('--backbone', default='resnet50', type=str,
                             help='model backbone', required=False)
