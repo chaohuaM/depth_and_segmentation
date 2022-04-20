@@ -5,7 +5,8 @@ import yaml
 import torch
 import cv2
 import numpy as np
-from model.create_model import MyModel
+from model.create_model_pl import MyModel
+from model.create_model_nn import create_model
 
 from utils.utils import resize_and_centered, preprocess_input, normalization
 
@@ -37,16 +38,9 @@ class PredictModel(object):
         #   model_path指向logs文件夹下的权值文件
         #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
         #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
-        # -------------------------------------------------------------------#
-        "model_weights_path": '',
-        # --------------------------------#
         #   所需要区分的类的个数+1
         # --------------------------------#
         "num_classes": 2,
-        # --------------------------------#
-        #   所使用的的主干网络：vgg、resnet50
-        # --------------------------------#
-        "backbone": "resnet50",
         # --------------------------------#
         #   输入图片的大小
         # --------------------------------#
@@ -73,11 +67,6 @@ class PredictModel(object):
         # ---------------------------------------------------#
         #   获得模型
         # ---------------------------------------------------#
-        if self.config_path:
-            with open(self.config_path, 'r') as f:
-                config_params = yaml.safe_load(f)
-                for name, value in config_params.items():
-                    setattr(self, name, value)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net = model.to(self.device).eval()
 
@@ -88,7 +77,7 @@ class PredictModel(object):
         # ---------------------------------------------------------#
         #   代码仅仅支持输入RGB图像的预测，所有其它类型的图像都会转化成RGB
         # ---------------------------------------------------------#
-        assert len(image.shape) == 3, "image.shape != 3"
+        assert len(image.shape) == 3, "the image.shape != 3"
         if self.in_channels == 1:
             img = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
@@ -161,16 +150,29 @@ class PredictModel(object):
         return feature_maps
 
 
-def create_predict_model(checkpoint_path, config_path):
+def create_predict_model_pl(checkpoint_path, config_path):
     model = MyModel.load_from_checkpoint(checkpoint_path=checkpoint_path, hparams_file=config_path).model
-    return PredictModel(model=model, config_path=config_path)
+    with open(config_path, 'r') as f:
+        config_params = yaml.safe_load(f)
+    return PredictModel(model=model, **config_params)
+
+
+def create_predict_model(model_weights_path, config_path):
+
+    with open(config_path, 'r') as f:
+        config_params = yaml.safe_load(f)
+    model = create_model(**config_params)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.load_state_dict(torch.load(model_weights_path, map_location=device))
+    return PredictModel(model=model, **config_params)
 
 
 if __name__ == '__main__':
-    config_path = 'logs/unet_dual_decoder/2022_04_07_23_56_17/hparams.yaml'
-    ckpt_path = 'logs/unet_dual_decoder/2022_04_07_23_56_17/checkpoints/epoch=49-step=16900.ckpt'
+    config_path = 'logs/unet_dual_decoder/2022_04_12_04_23_07/hparams.yaml'
+    ckpt_path = 'logs/unet_dual_decoder/2022_04_12_04_23_07/checkpoints/epoch=74-val_iou=0.90.ckpt'
+    model_weights_path = ''
 
-    pr_net = create_predict_model(checkpoint_path=ckpt_path, config_path=config_path)
+    pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
     mode = 1
 
     # 可视化特征图

@@ -1,6 +1,6 @@
 # @Author  : ch
 # @Time    : 2022/4/3 下午1:58
-# @File    : create_model.py
+# @File    : create_model_pl.py
 
 import torch
 import pytorch_lightning as pl
@@ -10,6 +10,8 @@ from model.unet_dual_decoder import unet_dual_decoder, unet_dual_decoder_with_sa
 from losses.depth_losses import BerHu_Loss
 from utils.utils_metrics import binary_mean_iou
 import torchmetrics
+
+MODEL_NAME = ['unet', 'deeplabv3plus', 'unet_dual_decoder', 'unet_dual_decoder_with_sa']
 
 
 class MyModel(pl.LightningModule):
@@ -26,14 +28,19 @@ class MyModel(pl.LightningModule):
         """
         super().__init__()
 
+        model_name = model_name.lower()
+        assert model_name in MODEL_NAME, f"{model_name} is not in present supported model list:{MODEL_NAME}"
+
         self.model_name = model_name
         if self.model_name == 'unet_dual_decoder':
             self.model = unet_dual_decoder(in_channels=in_channels, num_classes=num_classes, encoder_name=backbone)
         elif self.model_name == 'unet_dual_decoder_with_sa':
-            self.model = unet_dual_decoder_with_sa(in_channels=in_channels, num_classes=num_classes, encoder_name=backbone)
+            self.model = unet_dual_decoder_with_sa(in_channels=in_channels, num_classes=num_classes,
+                                                   encoder_name=backbone)
         else:
             self.model = smp.create_model(
-                model_name, encoder_name=backbone, in_channels=in_channels, classes=num_classes, encoder_weights=pretrained)
+                model_name, encoder_name=backbone, in_channels=in_channels, classes=num_classes,
+                encoder_weights=pretrained)
 
         self.num_classes = num_classes
         self.focal_loss = focal_loss
@@ -50,6 +57,7 @@ class MyModel(pl.LightningModule):
             self.depth_loss = None
 
         self.f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5)
+        self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
 
     def forward(self, image):
         output = self.model(image)
@@ -79,21 +87,15 @@ class MyModel(pl.LightningModule):
         total_loss = sem_loss + depth_loss
 
         self.f1_score.update(sem_outputs.view(-1), masks.view(-1))
-        iou = binary_mean_iou(sem_outputs, labels)
+        self.iou.update(sem_outputs.view(-1), masks.view(-1))
 
-        return {"loss": total_loss,
-                "iou": iou
-                }
+        return total_loss
 
     def shared_epoch_end(self, outputs, stage):
         # aggregate step metics
-        total_iou = 0
-
-        for output in outputs:
-            total_iou += output['iou']
 
         self.log(f"{stage}_f1_score", self.f1_score.compute(), logger=True)
-        self.log(f"{stage}_iou", total_iou / len(outputs), logger=True)
+        self.log(f"{stage}_iou", self.iou.compute(), logger=True)
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")
@@ -122,7 +124,7 @@ class MyModel(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("MyModel")
         # 模型相关
-        parser.add_argument('--model_name', default='deeplabv3plus', type=str,
+        parser.add_argument('--model_name', default='unet', type=str,
                             help='model architecture', required=False)
         parser.add_argument('--backbone', default='resnet50', type=str,
                             help='model backbone', required=False)
@@ -148,12 +150,25 @@ class MyModel(pl.LightningModule):
                             help='Epoch when freeze_train means freeze epoch', required=False)
         parser.add_argument('--batch_size', default=16, type=int, required=False,
                             help='freeze batch size of image in training')
-        parser.add_argument('--lr', default=0.01, type=float, required=False,
+        parser.add_argument('--lr', default=0.1, type=float, required=False,
                             help='learning rate of the optimizer')
 
         return parent_parser
 
 
-class TransferModel(MyModel):
+class TransferModelPL(MyModel):
     def __init__(self):
-        super(TransferModel, self).__init__()
+        super(TransferModelPL, self).__init__()
+        for param in self.model.encoder.parameters():
+            param.requires_grad = False
+
+
+if __name__ == '__main__':
+    model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=1)
+    # x = torch.zeros(2, 3, 512, 512)
+    #
+    # y = model.model(x)
+    # for u in y:
+    #     print(u.shape)
+
+    # tl_unet = TransferModel()

@@ -65,11 +65,36 @@ def exr2png(exr_path, png_path):
 #     if count % 100 == 0: print(count)
 
 
+# 将标签中的rgb值转为为0和1
+import glob
+
+label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_00/'
+new_label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/sky=1/'
+
+if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+
+count = 0
+
+for img_path in glob.glob(label_dir + '*.png'):
+    img_name = img_path.split('/')[-1]
+    img = cv2.imread(img_path, 0)
+    h, w = img.shape
+
+    label = np.zeros([h, w], dtype=np.uint8)
+    label[img >= 45] = 1
+
+    save_png(new_label_dir + '/' + img_name, label)
+
+    count += 1
+    if count % 100 == 0:
+        print(count)
+
+
 # # 将标签中的rgb值转为为0和1
-# img_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/'
-# label_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01/'
-# new_label_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01_label/'
-# label_vis_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/semantic_01_label_vis/'
+# img_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/'
+# label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01/'
+# new_label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label/'
+# label_vis_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label_vis/'
 #
 # if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
 # if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
@@ -78,20 +103,23 @@ def exr2png(exr_path, png_path):
 # for img_path in glob.glob(label_dir + '*.png'):
 #     img_name = img_path.split('/')[-1]
 #     img = cv2.imread(img_path, 0)
+#     h, w = img.shape
 #
-#     img[img <= 100] = 0
-#     img[img > 100] = 1
+#     label = np.zeros([h, w], dtype=np.uint8)
+#     label[img >= 100] = 1
 #
-#     save_png(new_label_dir + '/' + img_name, img)
+#     save_png(new_label_dir + '/' + img_name, label)
+#
+#     save_png(new_label_dir + '/' + img_name, label)
 #
 #     raw_img = cv2.imread(img_dir + '/' + img_name)
-#     vis_img = blend_image(raw_img, img)
+#     vis_img = blend_image(raw_img, label)
 #
 #     save_png(label_vis_dir + '/' + img_name, vis_img)
 #
 #     count += 1
 #
-#     if count % 20 == 0:
+#     if count % 100 == 0:
 #         print(count)
 
 
@@ -103,20 +131,20 @@ def exr2png(exr_path, png_path):
 #                '3940sensorLeft', '4465sensorRight', '1665sensorRight', '3687sensorLeft',
 #                '2669sensorLeft', '1702sensorLeft', '4359sensorLeft', '4550sensorRight']
 # input_shape = [256, 256]
-# input_channel = 3
+# input_channel = 1
 # input_shape.append(input_channel)
-# num_classes = 2
+# num_classes = 1
 # data_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
-# train_dataset = RockDataset(train_lines, input_shape, num_classes, False, data_dir)
+# train_dataset = RockDataset(train_lines, input_shape, num_classes, True, data_dir)
 # train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=4, pin_memory=True,
 #                               drop_last=True)
-
+#
 # for gen in train_dataloader:
 #     print(gen[0].size())
 
 # 测试pytorch-lightning 方式训练
 import pytorch_lightning as pl
-from model.create_model import MyModel
+from model.create_model_pl import MyModel
 
 # model = MyModel('Unet', encoder_name='resnet50', in_channels=3, num_classes=2, encoder_weights='imagenet')
 # trainer = pl.Trainer(gpus=1, max_epochs=100)
@@ -242,11 +270,19 @@ import json
 # with open('basic_args.json', 'r') as f:
 #     args.__dict__ = json.load(f)
 
-
+'''
+# 采用现成方法获得单目深度估计图
 import cv2
 import torch
+from predict_model import show_depth
 
 import matplotlib.pyplot as plt
+
+img_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/render_clean/'
+depth_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/depth/'
+
+if not os.path.exists(depth_dir): os.makedirs(depth_dir)
+
 
 model_type = "DPT_Large"  # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
 # model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
@@ -265,27 +301,35 @@ if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
 else:
     transform = midas_transforms.small_transform
 
-img = cv2.imread('/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/0013sensorLeft.png')
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+count = 0
+for img_path in glob.glob(img_dir + '*.png'):
+    img_name = img_path.split('/')[-1]
+    # img_path = '/home/ch5225/chaohua/lunar_rocky_landscape/images/render_clean/render1164.png'
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-input_batch = transform(img).to(device)
+    input_batch = transform(img).to(device)
 
-with torch.no_grad():
-    prediction = midas(input_batch)
+    with torch.no_grad():
+        prediction = midas(input_batch)
 
-    prediction = torch.nn.functional.interpolate(
-        prediction.unsqueeze(1),
-        size=img.shape[:2],
-        mode="bicubic",
-        align_corners=False,
-    ).squeeze()
+        prediction = torch.nn.functional.interpolate(
+            prediction.unsqueeze(1),
+            size=img.shape[:2],
+            mode="bicubic",
+            align_corners=False,
+        ).squeeze()
 
-output = prediction.cpu().numpy()
+    output = prediction.cpu().numpy()
 
+    depth_img = show_depth(output)
+    save_png(depth_dir+'/'+img_name, depth_img)
 
-plt.imshow(output)
-plt.show()
+    count += 1
 
+    if count % 20 == 0:
+        print(count)
+'''
 # pc = point_cloud_generator(focal_length=2383.60, scalingfactor=1.0)
 #
 # pc.rgb = img_raw
@@ -312,22 +356,25 @@ plt.show()
 # plt.show()
 
 
-# 将标签中的rgb值转为为0和1
-import glob
-
-# label_dir = '/home/ch5225/Desktop/模拟数据/2022-03-17-20-11-07/semantic_01/'
-# new_label_dir = '/home/ch5225/Desktop/模拟数据/2022-03-17-20-11-07/semantic_01_label/'
+# # 将标签中的rgb值转为为0和1
+# import glob
+#
+# label_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/clean/'
+# new_label_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/labels/'
 #
 # if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
 #
 # count = 0
 #
-# for img_path in glob.glob(label_dir + '*.png'):
+# for img_path in glob.glob(label_dir + '*.png')[:5]:
 #     img_name = img_path.split('/')[-1]
-#     img = cv2.imread(img_path, 0)
+#     img = cv2.imread(img_path, 1)
+#     h, w, c = img.shape
 #
-#     img[img < 100] = 0
-#     img[img > 100] = 1
+#     label = np.zeros([h, w], dtype=np.uint8)
+#     label[img[:, :, 0] == 255] = 1
+#     label[img[:, :, 1] == 255] = 1
+#     # label[img[:,:,1] > 100] = 1
 #
 #     save_png(new_label_dir + '/' + img_name, img)
 #
@@ -501,3 +548,63 @@ import glob
 #
 # model = smp.create_model('Unet', encoder_name='resnet18', encoder_weights=None, in_channels=3, classes=2)
 # summary(model.to('cuda'), (3, 512, 512))
+
+# ******** 对模拟数据中的各类图片进行分类***********
+# import glob
+# import shutil
+#
+# #
+# file_dir = '/media/ch5225/ch/oaisys-new'
+#
+# img_dir_list = glob.glob(file_dir + '/*/*/*Left', recursive=True)
+#
+# rgb_dir = file_dir + '/rgb'
+# semantic_00_dir = file_dir + '/semantic_00'
+# semantic_01_dir = file_dir + '/semantic_01'
+# instance_dir = file_dir + '/instance'
+# depth_exr_dir = file_dir + '/depth_exr'
+#
+# if not os.path.exists(rgb_dir): os.makedirs(rgb_dir)
+# if not os.path.exists(semantic_00_dir): os.makedirs(semantic_00_dir)
+# if not os.path.exists(semantic_01_dir): os.makedirs(semantic_01_dir)
+# if not os.path.exists(instance_dir): os.makedirs(instance_dir)
+# if not os.path.exists(depth_exr_dir): os.makedirs(depth_exr_dir)
+#
+# count = 10
+#
+# for img_dir in img_dir_list:
+#
+#     img_list = os.listdir(img_dir)
+#
+#     for img_name in img_list:
+#         img = img_dir + '/' + img_name
+#         if 'rgb' in img_name:
+#             count += 1
+#
+#             rgb_img = img
+#             instance_img = img.replace('rgb_00', 'instance_label_00')
+#             exr_img = img.replace('rgb_00', 'pinhole_depth_00').replace('.png', '.exr')
+#             s1_img = img.replace('rgb_00', 'semantic_label_00')
+#             s2_img = img.replace('rgb_00', 'semantic_label_01')
+#
+#             shutil.move(rgb_img, rgb_dir + '/' + str(count).zfill(5) + 'Left.png')
+#             shutil.move(rgb_img.replace('Left', 'Right'), rgb_dir + '/' + str(count).zfill(5) + 'Right.png')
+#
+#             shutil.move(s1_img, semantic_00_dir + '/' + str(count).zfill(5) + 'Left.png')
+#             shutil.move(s1_img.replace('Left', 'Right'), semantic_00_dir + '/' + str(count).zfill(5) + 'Right.png')
+#
+#             shutil.move(s2_img, semantic_01_dir + '/' + str(count).zfill(5) + 'Left.png')
+#             shutil.move(s2_img.replace('Left', 'Right'), semantic_01_dir + '/' + str(count).zfill(5) + 'Right.png')
+#
+#             shutil.move(instance_img, instance_dir + '/' + str(count).zfill(5) + 'Left.png')
+#             shutil.move(instance_img.replace('Left', 'Right'), instance_dir + '/' + str(count).zfill(5) + 'Right.png')
+#
+#             shutil.move(exr_img, depth_exr_dir + '/' + str(count).zfill(5) + 'Left.exr')
+#             shutil.move(exr_img.replace('Left', 'Right'), depth_exr_dir + '/' + str(count).zfill(5) + 'Right.exr')
+#
+#             if count % 100 == 0:
+#                 print(count)
+
+
+
+

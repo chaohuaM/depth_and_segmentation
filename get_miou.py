@@ -5,7 +5,7 @@ import glob
 import cv2
 from tqdm import tqdm
 
-from predict_model import create_predict_model, blend_image, show_depth
+from predict_model import create_predict_model_pl, blend_image, show_depth
 from utils.utils_metrics import compute_mIoU, show_results
 
 '''
@@ -51,19 +51,21 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/'
-        image_dir = os.path.join(dataset_dir, 'rgb')
-        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
+        dataset_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/real_moon_images/'
+        image_dir = os.path.join(dataset_dir, 'images')
+        gt_dir = os.path.join(dataset_dir, "label_mask")
 
         # 输出路径设置
         miou_out_path = dataset_dir + log_path
         pred_dir = os.path.join(miou_out_path, 'detection-results')
 
         # 有val.txt的时候
-        image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
+        # image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
         # 直接读取文件夹里的文件名
-        # image_ids = os.listdir(image_dir)
-        # image_ids = [image_id[:-4] for image_id in image_ids]
+        image_ids = os.listdir(image_dir)
+        image_ids = [image_id[:-4] for image_id in image_ids]
+
+        print("images number：", len(image_ids))
 
         if miou_mode == 0 or miou_mode == 1:
             if not os.path.exists(pred_dir):
@@ -78,7 +80,7 @@ if __name__ == "__main__":
             if not os.path.exists(pred_depth_dir):
                 os.makedirs(pred_depth_dir)
 
-            pr_net = create_predict_model(checkpoint_path=ckpt_path, config_path=config_path)
+            pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
             print("Load model done.")
 
             print("Get predict result.")

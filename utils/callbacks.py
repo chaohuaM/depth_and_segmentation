@@ -8,6 +8,7 @@ class LossHistory:
     def __init__(self, log_dir, val_loss_flag=True):
         self.time_str = log_dir.split('/')[-1]
         self.save_path = log_dir
+        self.model_save_path = log_dir + '/checkpoints/'
         self.val_loss_flag = val_loss_flag
 
         self.losses = []
@@ -16,6 +17,20 @@ class LossHistory:
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
+
+        if not os.path.exists(self.model_save_path):
+            os.makedirs(self.model_save_path)
+
+    def log_dict(self, dict, stage):
+        """
+
+        :param dict:
+        :return:
+        """
+        for name, value in dict.items():
+            with open(os.path.join(self.save_path, stage+'-'+name+".txt"), 'a') as f:
+                f.write(str(value))
+                f.write("\n")
 
     def append_loss(self, loss, val_loss=0):
         self.losses.append(loss)
@@ -29,6 +44,10 @@ class LossHistory:
                 f.write(str(val_loss))
                 f.write("\n")
         self.loss_plot()
+
+    def append_metric(self, metric):
+        # TODO 添加记录metric的方式
+        pass
 
     def loss_plot(self):
         iters = range(len(self.losses))
