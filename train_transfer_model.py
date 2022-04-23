@@ -1,7 +1,11 @@
+# @Author  : ch
+# @Time    : 2022/4/24 上午12:10
+# @File    : train_transfer_model.py
+
 import os.path
 import datetime
 import argparse
-from utils.dataloader import RockDataset
+from utils.dataloader import RealRockDataset
 from torch.utils.data import DataLoader
 import torch
 import torch.backends.cudnn as cudnn
@@ -12,53 +16,11 @@ from utils.utils_fit import fit_one_epoch
 from model.create_model_nn import create_model, MyModel
 from utils.callbacks import LossHistory
 import numpy as np
+from train_model_nn import add_model_specific_args, save_options
+from predict_model import create_predict_model_pl
 
 
-def save_options(data, path):
-    import yaml
-    with open(path, encoding='utf-8', mode='w') as f:
-        try:
-            yaml.dump(data=data, stream=f, allow_unicode=True)
-        except Exception as e:
-            print(e)
-
-
-def add_model_specific_args(parent_parser):
-    parser = parent_parser.add_argument_group("MyModel")
-    # 模型相关
-    parser.add_argument('--model_name', default='unet', type=str,
-                        help='model architecture', required=False)
-    parser.add_argument('--backbone', default='resnet18', type=str,
-                        help='model backbone', required=False)
-    parser.add_argument('--pretrained', default=None, type=str,
-                        help='model backbone pretrained', required=False)
-    # 输入数据相关
-    parser.add_argument('--input_shape', default=[512, 512], nargs="*", type=int,
-                        help='input image size [h, w]', required=False)
-    parser.add_argument('--in_channels', default=3, type=int,
-                        help='input image channels, 1 or 3', required=False)
-    parser.add_argument('--num_classes', help='number of classes', default=1, required=False)
-    parser.add_argument('--data_transform', type=int, default=0, required=False,
-                        help='training data transform')
-
-    # 损失函数相关
-    parser.add_argument('--dice_loss', default=0, type=int, required=False)
-    parser.add_argument('--focal_loss', default=0, type=int, required=False)
-    parser.add_argument('--depth_loss_factor', default=0.0, type=float, required=False,
-                        help='')
-
-    # 训练相关
-    parser.add_argument('--epoch', default=100, type=int,
-                        help='Epoch when freeze_train means freeze epoch', required=False)
-    parser.add_argument('--batch_size', default=2, type=int, required=False,
-                        help='freeze batch size of image in training')
-    parser.add_argument('--lr', default=0.01, type=float, required=False,
-                        help='learning rate of the optimizer')
-
-    return parent_parser
-
-
-def train_model():
+def train_transfer_model():
     parser = argparse.ArgumentParser(description='Depth and Segmentation')
 
     parser = add_model_specific_args(parser)
@@ -91,6 +53,9 @@ def train_model():
     # -------------------------------#
     gpus = args.gpus
     epoch = args.epoch
+    freeze_epoch = int(epoch/2)
+    unfreeze_epoch = epoch
+
     # -------------------------------#
     #   训练自己的数据集必须要修改的
     #   自己需要的分类个数+1，如2 + 1
@@ -125,7 +90,6 @@ def train_model():
     #   内存较小的电脑可以设置为2或者0
     # ------------------------------------------------------#
     num_workers = args.num_workers
-    cls_weights = np.array([1])
 
     timestamp = args.timestamp
     log_path = args.log_dir
@@ -150,14 +114,15 @@ def train_model():
     # 生成dataloader
     data_shape = [input_shape[0], input_shape[1], in_channels]
 
-    train_dataset = RockDataset(train_lines, data_shape, num_classes, data_transform, dataset_path)
-    val_dataset = RockDataset(val_lines, data_shape, num_classes, False, dataset_path)
-    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=gpu_bs, num_workers=num_workers,
-                                  pin_memory=True, drop_last=True)
-    val_dataloader = DataLoader(val_dataset, shuffle=False, batch_size=gpu_bs, num_workers=num_workers,
-                                pin_memory=True, drop_last=True)
+    ckpt_path = 'new-logs/unet/2022_04_22_21_52_55/checkpoints/epoch=99-val_iou=0.864.ckpt'
+    hparams_path = 'new-logs/unet/2022_04_22_21_52_55/hparams.yaml'
+    model = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=hparams_path).net
 
-    model = create_model(**model_args)
+    TransferModel = MyModel()
+    TransferModel.set_model(model)
+    TransferModel.freeze_backbone()
+    model = TransferModel.get_model()
+
     model = model.cuda()
     model_train = model.train()
 
@@ -173,16 +138,23 @@ def train_model():
 
     metric_list = [0, 0, 0, 0, 0]
 
+    for epoch_idx in range(freeze_epoch):
 
-    for epoch_idx in range(epoch):
+        train_dataset = RealRockDataset(train_lines, data_shape, num_classes, data_transform, dataset_path)
+        val_dataset = RealRockDataset(val_lines, data_shape, num_classes, False, dataset_path)
+        train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=gpu_bs, num_workers=num_workers,
+                                      pin_memory=True, drop_last=True)
+        val_dataloader = DataLoader(val_dataset, shuffle=False, batch_size=gpu_bs, num_workers=num_workers,
+                                    pin_memory=True, drop_last=True)
+
         metric = fit_one_epoch(model_train, loss_history, optimizer, epoch_idx,
-                                 epoch_step, epoch_step_val, train_dataloader, val_dataloader, epoch, cuda=True,
-                                 dice_loss=dice_loss, focal_loss=focal_loss, depth_loss_factor=depth_loss_factor)
+                               epoch_step, epoch_step_val, train_dataloader, val_dataloader, epoch, cuda=True,
+                               dice_loss=dice_loss, focal_loss=focal_loss, depth_loss_factor=depth_loss_factor)
 
         if metric >= min(metric_list):
             metric_list[metric_list.index(min(metric_list))] = metric
             # SAVE MODEL
-            save_model_name = 'epoch={:0>3d}-miou={:.3f}.pth'.format(epoch_idx+1, metric)
+            save_model_name = 'epoch={:0>3d}-miou={:.3f}.pth'.format(epoch_idx + 1, metric)
             torch.save(model.state_dict(), os.path.join(loss_history.save_path,
                                                         save_model_name))
 
@@ -190,6 +162,34 @@ def train_model():
 
         lr_scheduler.step()
 
+    print("start all fine-tune!")
+    TransferModel.unfreeze_backbone()
+    model = TransferModel.get_model()
+
+    train_dataset = RealRockDataset(train_lines, data_shape, num_classes, False, dataset_path)
+    val_dataset = RealRockDataset(val_lines, data_shape, num_classes, False, dataset_path)
+
+    train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=gpu_bs, num_workers=num_workers,
+                                  pin_memory=True, drop_last=True)
+    val_dataloader = DataLoader(val_dataset, shuffle=False, batch_size=gpu_bs, num_workers=num_workers,
+                                pin_memory=True, drop_last=True)
+
+    optimizer = optim.Adam(model_train.parameters(), 1e-5)
+    for epoch_idx in range(freeze_epoch, unfreeze_epoch):
+        metric = fit_one_epoch(model_train, loss_history, optimizer, epoch_idx,
+                               epoch_step, epoch_step_val, train_dataloader, val_dataloader, epoch, cuda=True,
+                               dice_loss=dice_loss, focal_loss=focal_loss, depth_loss_factor=depth_loss_factor)
+
+        if metric >= min(metric_list):
+            metric_list[metric_list.index(min(metric_list))] = metric
+            # SAVE MODEL
+            save_model_name = 'epoch={:0>3d}-miou={:.3f}.pth'.format(epoch_idx + 1, metric)
+            torch.save(model.state_dict(), os.path.join(loss_history.save_path,
+                                                        save_model_name))
+
+            print("best metric:", metric, "saved:", save_model_name)
+
 
 if __name__ == "__main__":
-    train_model()
+
+    train_transfer_model()

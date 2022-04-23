@@ -1,11 +1,8 @@
-#!/usr/bin/env python
 # coding: utf-8
-
-# In[ ]:
+# @Author：@mls， @ch
 
 import colorsys
 from PIL import Image
-import glob
 import cv2
 import numpy as np
 
@@ -57,48 +54,47 @@ def change_color(image_path, save_path, mask_path):
     image.save(save_path)
 
 
+# 使用opencv库操作速度比Image库速度快很多，特别是大量数据的时候
 def change_color_opencv(image_path, save_path, mask_path):
+    """
+    利用opencv进行读取并进行颜色的转换，其中mask为天空的mask，sky为1，non-sky为0，
+    :param image_path: str，输入图片路径
+    :param save_path: str，输入保存路径
+    :param mask_path: str，输入天空掩膜图像
+    :return:
+    """
+    # 读取并转换到hsv空间
     image = cv2.imread(image_path, 1)
     image = cv2.cvtColor(np.array(image, np.float32) / 255, cv2.COLOR_BGR2HSV)
-
+    # 分离通道
     h, s, v = cv2.split(image)
 
+    # 读取sky mask，～为取反操作，所以要先转为类型bool
     sky = cv2.imread(mask_path, 0)
     non_sky = ~sky.astype('bool')
+
+    # 分别对h， s， v 进行赋值和变换, 前面的数值是观察真实图片得到的
     new_h = 0.0912 * 360 * sky + 0.0489 * 360 * non_sky
     # new_s = 0.900 * s * sky + 1.5 * s * non_sky
     new_s = 0.3714 * sky + 0.5455 * non_sky
     new_v = 0.9 * v * sky + 0.975 * v * non_sky
 
-    new_h = new_h.astype('float32')
-    new_s = new_s.astype('float32')
+    # h <=360, s，v <=1
+    new_h[new_h > 360] = 360
     new_s[new_s > 1] = 1
     new_v[new_v > 1] = 1
 
+    # 因为上一步操作完成后数据类型不一样，进行转换
+    new_h = new_h.astype(h.dtype)
+    new_s = new_s.astype(h.dtype)
+    new_v = new_v.astype(h.dtype)
+
+    # 合并通道并转换为rgb空间，最后要乘回255
     output = cv2.merge([new_h, new_s, new_v])
     output = cv2.cvtColor(output, cv2.COLOR_HSV2BGR)*255
 
+    # 保存图像
     cv2.imwrite(save_path, output)
 
-
-if __name__ == "__main__":
-    img_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/'
-
-    img_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/00033Left.png'
-    mask = img_path.replace('rgb', 'sky=1')
-    # save_path = img_path.replace('rgb', 'red_images')
-    save_path = 'test00.png'
-    change_color_opencv(img_path, save_path, mask)
-
-    # count = 0
-    # for img_path in glob.glob(img_dir+'/*.png'):
-    #     mask = img_path.replace('rgb', 'sky=1')
-    #     save_path = img_path.replace('rgb', 'red_images')
-    #
-    #     change_color_opencv(img_path, save_path, mask)
-    #
-    #     count += 1
-    #     if count % 100 == 0:
-    #         print(count)
 
 

@@ -79,6 +79,11 @@ class RockDataset(Dataset):
         self.num_classes = num_classes
         self.transform = transform
         self.dataset_path = dataset_path
+        # self.image_level_transform = True
+        self.color_jitter = True
+        self.img_dir = os.path.join(self.dataset_path, 'rgb')
+        self.label_dir = os.path.join(self.dataset_path, 'semantic_01_label')
+        self.depth_dir = os.path.join(self.dataset_path, 'depth_npy')
 
     def __len__(self):
         return self.length
@@ -100,10 +105,10 @@ class RockDataset(Dataset):
         标签路径     数据集文件夹/semantic_01_label/*.png
         深度图路径    数据集文件夹/depth/*_pinhole_depth_*.exr
         '''
-        img_path = os.path.join(os.path.join(self.dataset_path, "rgb"), name + ".png")
-        label_path = os.path.join(os.path.join(self.dataset_path, "semantic_01_label"), name + ".png")
-        # TODO 明确用什么格式的图片，是相对深度还是绝对深度
-        depth_img_path = os.path.join(os.path.join(self.dataset_path, "depth_exr"), name + ".exr")
+        img_path = os.path.join(self.img_dir, name + ".png")
+        label_path = os.path.join(self.label_dir, name + ".png")
+        # TODO 明确用什么格式的图片，是相对深度还是绝对深度, 目前来看应该是inv-depth
+        depth_img_path = os.path.join(self.depth_dir, name + ".npy")
 
         # 以50%概率读取成灰度图 再转换成rgb，只有亮度信息
         if self.input_shape[2] == 1 or (self.transform and rand() < 0.5):
@@ -114,7 +119,7 @@ class RockDataset(Dataset):
             x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2RGB)
 
         y_label = cv2.imread(label_path, -1)
-        depth_img = load_exr(depth_img_path)
+        depth_img = np.load(depth_img_path)
         # -------------------------------#
         #   数据增强
         # -------------------------------#
@@ -163,9 +168,21 @@ class RockDataset(Dataset):
         image, label, depth = image_level_transform(img_items, flip, jitter, [h, w])
 
         # pixel-level distortion image
-        image = pixel_level_distort(image, hue, sat, val)
+        if self.color_jitter:
+            image = pixel_level_distort(image, hue, sat, val)
 
         return image, label, depth
+
+
+class RealRockDataset(RockDataset):
+    def __init__(self, img_path_lines, input_shape, num_classes, transform, dataset_path):
+        super().__init__(img_path_lines, input_shape, num_classes, transform, dataset_path)
+
+        # 关闭颜色抖动的增强部分
+        self.color_jitter = False
+        self.img_dir = os.path.join(self.dataset_path, 'images')
+        self.label_dir = os.path.join(self.dataset_path, 'label_mask')
+        self.depth_dir = os.path.join(self.dataset_path, 'inv-depth-npy')
 
 
 # DataLoader中collate_fn使用

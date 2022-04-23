@@ -38,10 +38,10 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("logs/*/*/*/*")
+    model_paths = glob.glob("new-logs/*/*04_22*/*/*99*")
     for model_path in model_paths:
-        log_path = model_path[:-38] + model_path.split("/")[-1][:-5]
-        config_path = model_path[:-38]+"hparams.yaml"
+        log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
+        config_path = '/'.join(model_path.split('/')[:-2]) + '/' + "hparams.yaml"
         ckpt_path = model_path
 
         with open(config_path, 'r') as f:
@@ -51,19 +51,19 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/real_moon_images/'
-        image_dir = os.path.join(dataset_dir, 'images')
-        gt_dir = os.path.join(dataset_dir, "label_mask")
+        dataset_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/'
+        image_dir = os.path.join(dataset_dir, 'rgb')
+        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
         # 输出路径设置
-        miou_out_path = dataset_dir + log_path
+        miou_out_path = dataset_dir + log_path + '/val/'
         pred_dir = os.path.join(miou_out_path, 'detection-results')
 
         # 有val.txt的时候
-        # image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
+        image_ids = open(os.path.join(dataset_dir, "ImageSets/val.txt"), 'r').read().splitlines()
         # 直接读取文件夹里的文件名
-        image_ids = os.listdir(image_dir)
-        image_ids = [image_id[:-4] for image_id in image_ids]
+        # image_ids = os.listdir(image_dir)
+        # image_ids = [image_id[:-4] for image_id in image_ids]
 
         print("images number：", len(image_ids))
 

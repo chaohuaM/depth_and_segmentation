@@ -22,7 +22,7 @@ def load_exr(image_path):
     """
     读取深度图像，深度图格式为exr
     :param image_path:  str, the path of depth image, end with '.exr'
-    :return:  opencv2 ndarray object, type = float32
+    :return:  opencv ndarray object, type = float32
     """
     image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     image = image[:, :, 0]

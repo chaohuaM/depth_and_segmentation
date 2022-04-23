@@ -17,11 +17,18 @@ class MyModel(nn.Module):
         super().__init__()
         self.net = create_model(model_name, backbone, in_channels,
                  num_classes, pretrained, **kwargs)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, inputs):
         outputs = self.net(inputs)
 
         return outputs
+
+    def set_model(self, model):
+        self.net = model
+
+    def get_model(self):
+        return self.net
 
     def freeze_backbone(self):
         for param in self.net.encoder.parameters():
@@ -52,18 +59,22 @@ def create_model(model_name='unet', backbone='resnet18', in_channels=3,
 
 
 if __name__ == "__main__":
-    model = MyModel()
-    net = model.net
+    model = create_model()
+    model_weights_path = ''
+    TransferModel = MyModel()
+    TransferModel.set_model(model)
+    TransferModel.load_model_weights(model_weights_path)
+    TransferModel.freeze_backbone()
 
-    for param in net.encoder.parameters():
+    transfer_model = TransferModel.get_model()
+
+    for param in transfer_model.encoder.parameters():
         print(param.requires_grad)
 
-    model.freeze_backbone()
-
-    for param in net.encoder.parameters():
+    for param in model.encoder.parameters():
         print(param.requires_grad)
 
-    print(id(net), id(model.net))
+    print(id(transfer_model), id(model))
 
 
 

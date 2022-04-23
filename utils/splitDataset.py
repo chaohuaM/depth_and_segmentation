@@ -1,5 +1,6 @@
 import os
 import random
+random.seed(0)
 
 # ----------------------------------------------------------------------#
 #   想要增加测试集修改trainval_percent
@@ -7,29 +8,30 @@ import random
 #
 #   当前该库将测试集当作验证集使用，不单独划分测试集
 # ----------------------------------------------------------------------#
-trainval_percent = 0.6
-train_percent = 0.9
+trainval_percent = 1
+train_percent = 0.755
 # -------------------------------------------------------#
 #   指向数据集所在的文件夹
 #   默认指向根目录下的数据集
 # -------------------------------------------------------#
-dataset_path = '../dataset/oaisys_data'
+dataset_path = '/home/ch5225/chaohua/MarsData/Data/rockA&B'
 
 if __name__ == "__main__":
-    random.seed(0)
+
     print("Generate txt in ImageSets.")
-    segfilepath = os.path.join(dataset_path, 'rgb')
+    segfilepath = os.path.join(dataset_path, 'images')
     saveBasePath = os.path.join(dataset_path, 'ImageSets')
     if not os.path.exists(saveBasePath):
         os.mkdir(saveBasePath)
 
     temp_seg = os.listdir(segfilepath)
-    total_seg = []
-    for seg in temp_seg:
-        if 'Left' in seg:
-            if random.randint(0, 1):
-                seg = seg.replace('Left', 'Right')
-            total_seg.append(seg)
+    # total_seg = []
+    # for seg in temp_seg:
+    #     if 'Left' in seg:
+    #         if random.randint(0, 1):
+    #             seg = seg.replace('Left', 'Right')
+    #         total_seg.append(seg)
+    total_seg = temp_seg
 
     num = len(total_seg)
     data_list = range(num)
