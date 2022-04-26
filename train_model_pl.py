@@ -26,8 +26,8 @@ def train_model():
     parser.add_argument('--timestamp', default=datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S'),
                         type=str, help="choose running mode, train or predict")
     parser.add_argument('--log_dir', type=str, help='log save directory', required=False,
-                        default='logs/')
-    parser.add_argument('--dataset_path', default='dataset/oaisys_data', type=str,
+                        default='new-logs/')
+    parser.add_argument('--dataset_path', default='dataset/oaisys-new', type=str,
                         help='dataset_path', required=False)
 
     # 系统相关
@@ -86,9 +86,9 @@ def train_model():
     csv_logger = pl_loggers.CSVLogger(save_dir=log_path, name=model_name,  version=timestamp)
 
     ckpt_callback = ModelCheckpoint(save_top_k=5,
-                                    monitor="val_iou",
+                                    monitor="val_f1_score",
                                     mode="max",
-                                    filename="{epoch}-{val_iou:.3f}")
+                                    filename="{epoch}-{val_fscore:.3f}")
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
     data_shape = [input_shape[0], input_shape[1], in_channels]

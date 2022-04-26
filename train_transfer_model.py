@@ -114,8 +114,8 @@ def train_transfer_model():
     # 生成dataloader
     data_shape = [input_shape[0], input_shape[1], in_channels]
 
-    ckpt_path = 'new-logs/unet/2022_04_22_21_52_55/checkpoints/epoch=99-val_iou=0.864.ckpt'
-    hparams_path = 'new-logs/unet/2022_04_22_21_52_55/hparams.yaml'
+    ckpt_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/checkpoints/epoch=99-val_iou=0.871.ckpt'
+    hparams_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/hparams.yaml'
     model = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=hparams_path).net
 
     TransferModel = MyModel()

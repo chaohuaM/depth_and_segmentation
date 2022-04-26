@@ -21,7 +21,7 @@ if __name__ == "__main__":
     #   miou_mode为1代表仅仅获得预测结果。
     #   miou_mode为2代表仅仅计算miou。
     # ---------------------------------------------------------------------------#
-    miou_mode = 0
+    miou_mode = 1
     # ------------------------------#
     #   输入预测的图片类型：gray和rgb   #
     # ------------------------------#
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("new-logs/*/*04_22*/*/*99*")
+    model_paths = glob.glob("new-logs/*/*/*/*")
     for model_path in model_paths:
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
         config_path = '/'.join(model_path.split('/')[:-2]) + '/' + "hparams.yaml"
@@ -51,19 +51,19 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/'
-        image_dir = os.path.join(dataset_dir, 'rgb')
-        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
+        dataset_dir = '/home/ch5225/Desktop/'
+        image_dir = os.path.join(dataset_dir, 'NaTeCam7-9')
+        gt_dir = os.path.join(dataset_dir, "label_mask")
 
         # 输出路径设置
-        miou_out_path = dataset_dir + log_path + '/val/'
+        miou_out_path = dataset_dir + log_path
         pred_dir = os.path.join(miou_out_path, 'detection-results')
 
         # 有val.txt的时候
-        image_ids = open(os.path.join(dataset_dir, "ImageSets/val.txt"), 'r').read().splitlines()
+        # image_ids = open(os.path.join(dataset_dir, "ImageSets/val.txt"), 'r').read().splitlines()
         # 直接读取文件夹里的文件名
-        # image_ids = os.listdir(image_dir)
-        # image_ids = [image_id[:-4] for image_id in image_ids]
+        image_ids = os.listdir(image_dir)
+        image_ids = [image_id[:-4] for image_id in image_ids]
 
         print("images number：", len(image_ids))
 

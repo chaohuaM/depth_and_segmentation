@@ -44,7 +44,7 @@ def add_model_specific_args(parent_parser):
     # 损失函数相关
     parser.add_argument('--dice_loss', default=0, type=int, required=False)
     parser.add_argument('--focal_loss', default=0, type=int, required=False)
-    parser.add_argument('--depth_loss_factor', default=0.0, type=float, required=False,
+    parser.add_argument('--depth_loss_factor', default=0.01, type=float, required=False,
                         help='')
 
     # 训练相关

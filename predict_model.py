@@ -138,6 +138,7 @@ class PredictModel(object):
         def layer_hook(module, input, output):
             output = output[0].cpu().numpy()
             for feature in output:
+                print(feature.shape)
                 feature_maps.append(resize_and_centered(feature, (original_h, original_w), reverse=True))
 
         # hook handler必须定义在model的前向过程之前
@@ -168,20 +169,20 @@ def create_predict_model(model_weights_path, config_path):
 
 
 if __name__ == '__main__':
-    config_path = 'logs/unet_dual_decoder/2022_04_12_04_23_07/hparams.yaml'
-    ckpt_path = 'logs/unet_dual_decoder/2022_04_12_04_23_07/checkpoints/epoch=74-val_iou=0.90.ckpt'
+    config_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/hparams.yaml'
+    ckpt_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/checkpoints/epoch=99-val_iou=0.871.ckpt'
     model_weights_path = ''
 
     pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
-    mode = 1
+    mode = 0
 
     # 可视化特征图
     if mode == 0:
-        image_path = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59/rgb/0138sensorLeft.png'
+        image_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/00011Left.png'
         img = cv2.imread(image_path, 1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        feature_maps= pr_net.get_feature_maps(input_image=img, layer_name='decoder.blocks.0')
+        feature_maps= pr_net.get_feature_maps(input_image=img, layer_name='sa_blocks.4')
         fig = plt.figure(dpi=800)
         # plt.imshow(feature_maps[0], cmap='jet')
         # plt.axis('off')

@@ -33,7 +33,7 @@ def imgrad_yx(img):
 def GRAD_LOSS(z, z_fake):
     grad_real, grad_fake = imgrad_yx(z), imgrad_yx(z_fake)
 
-    # L1 norm
+    # L1 norm mean absolute error loss function
     return torch.mean(torch.abs(grad_real - grad_fake))
 
 
@@ -67,11 +67,3 @@ def scale_invariant_loss(z_fake, z_real, reduction="mean"):
     z_real = z_real.flatten(start_dim=1)
     alpha = (z_real - z_fake).mean(dim=1, keepdim=True)
     return F.mse_loss(z_fake + alpha, z_real, reduction=reduction)
-
-
-
-
-
-
-
-

@@ -90,37 +90,37 @@ def exr2png(exr_path, png_path):
 #         print(count)
 
 
-# 将标签中的rgb值转为为0和1
-img_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/'
-label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01/'
-new_label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label/'
-label_vis_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label_vis/'
-
-if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
-if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
-
-count = 0
-for img_path in glob.glob(label_dir + '*.png'):
-    img_name = img_path.split('/')[-1]
-    img = cv2.imread(img_path, 0)
-    h, w = img.shape
-
-    label = np.zeros([h, w], dtype=np.uint8)
-    label[img >= 100] = 1
-
-    save_png(new_label_dir + '/' + img_name, label)
-
-    save_png(new_label_dir + '/' + img_name, label)
-
-    raw_img = cv2.imread(img_dir + '/' + img_name)
-    vis_img = blend_image(raw_img, label)
-
-    save_png(label_vis_dir + '/' + img_name, vis_img)
-
-    count += 1
-
-    if count % 200 == 0:
-        print(count)
+# # 将标签中的rgb值转为为0和1
+# img_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/'
+# label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01/'
+# new_label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label/'
+# label_vis_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label_vis/'
+#
+# if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+# if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
+#
+# count = 0
+# for img_path in glob.glob(label_dir + '*.png'):
+#     img_name = img_path.split('/')[-1]
+#     img = cv2.imread(img_path, 0)
+#     h, w = img.shape
+#
+#     label = np.zeros([h, w], dtype=np.uint8)
+#     label[img >= 100] = 1
+#
+#     save_png(new_label_dir + '/' + img_name, label)
+#
+#     save_png(new_label_dir + '/' + img_name, label)
+#
+#     raw_img = cv2.imread(img_dir + '/' + img_name)
+#     vis_img = blend_image(raw_img, label)
+#
+#     save_png(label_vis_dir + '/' + img_name, vis_img)
+#
+#     count += 1
+#
+#     if count % 200 == 0:
+#         print(count)
 
 
 # 测试dataloader函数
@@ -617,40 +617,55 @@ for img_path in glob.glob(img_dir + '*.png'):
 
 
 # 深度图变视差图
-from utils.utils import load_exr
+from predict_model import show_depth
 from scipy import stats
 
-# exr_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/'
-# new_depth_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/disparity/'
-# 
-# if not os.path.exists(new_depth_dir): os.mkdir(new_depth_dir)
-# 
-# count = 0
-# for exr_name in os.listdir(exr_dir):
-#     # exr_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/00151Left.exr'
-# 
-#     depth = cv2.imread(exr_dir+exr_name, cv2.IMREAD_UNCHANGED)
-#     depth = depth[:, :, 0]
-# 
-#     # min_depth = np.min(depth)
-#     #
-#     # depth[depth == 10000000000.00000] = 0.0
-#     # max_depth = np.max(depth)
-#     # depth[depth == 0.0] = max_depth
-# 
-#     focal_length = 595.90
-#     base_line = 0.27
-# 
-#     disparity = focal_length * base_line / depth
-#     mean_d = np.mean(disparity)
-#     sigma = np.std(disparity)
-#     disparity = (disparity - mean_d) / sigma
-#     disparity_path = new_depth_dir + exr_name.replace('exr', 'npy')
-#     np.save(disparity_path, disparity)
-# 
-#     count += 1
-#     if count % 100 == 0:
-#         print(count)
+exr_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/'
+new_depth_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-npy/'
+new_depth_png_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-png/'
+
+if not os.path.exists(new_depth_dir): os.mkdir(new_depth_dir)
+if not os.path.exists(new_depth_png_dir): os.mkdir(new_depth_png_dir)
+
+count = 0
+for exr_name in os.listdir(exr_dir)[45:]:
+    # exr_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/00151Left.exr'
+
+    depth = cv2.imread(exr_dir+exr_name, cv2.IMREAD_UNCHANGED)
+    depth = depth[:, :, 0]
+
+    min_depth = np.min(depth)
+    #
+    depth[depth == 10000000000.00000] = -1 * min_depth
+    max_depth = np.max(depth)
+    # depth[depth == 0.0] = max_depth
+
+    focal_length = 595.90
+    base_line = 0.27
+
+    disparity = focal_length * base_line / depth
+    # mean_d = np.mean(disparity)
+    # sigma = np.std(disparity)
+    # disparity = (disparity - mean_d) / sigma
+
+    min_d = np.min(np.abs(disparity))
+    max_d = np.max(disparity)
+
+    range = max_d - min_d
+    disparity = (disparity-min_d)/range
+    disparity[disparity < 0] = 0
+
+    disparity_path = new_depth_dir + exr_name.replace('exr', 'npy')
+    np.save(disparity_path, disparity)
+
+    disparity_png_path = new_depth_png_dir + exr_name.replace('exr', 'png')
+    d_img = show_depth(disparity)
+
+    save_png(disparity_png_path, d_img)
+    # save_png('test.png', d_img)
+    count += 1
+    if count % 100 == 0:
+        print(count)
 
     # focal_length = 595.90
     # base_line = 0.27

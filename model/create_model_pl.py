@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 from model.unet_dual_decoder import unet_dual_decoder, unet_dual_decoder_with_sa
 
-from losses.depth_losses import BerHu_Loss
+from losses.ssi_loss import ScaleAndShiftInvariantLoss
 from utils.utils_metrics import binary_mean_iou
 import torchmetrics
 
@@ -52,7 +52,7 @@ class MyModel(pl.LightningModule):
         if self.dice_loss:
             self.sem_loss_fn = smp.losses.DiceLoss(mode='binary', from_logits=True)
         if self.model_name in ['unet_dual_decoder', 'unet_dual_decoder_with_sa']:
-            self.depth_loss = BerHu_Loss
+            self.depth_loss = ScaleAndShiftInvariantLoss()
         else:
             self.depth_loss = None
 
@@ -75,14 +75,20 @@ class MyModel(pl.LightningModule):
 
         sem_loss = self.sem_loss_fn(sem_outputs, masks.float())
 
-        self.log(f"{stage}_sem_loss", sem_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+        self.log(f"{stage}_sem_loss", sem_loss, prog_bar=True, logger=True, on_epoch=True)
 
         depth_loss = 0
 
         if self.depth_loss is not None:
             depth_output = outputs[1]
-            depth_loss = self.depth_loss_factor * self.depth_loss(depth_output, depths)
-            self.log(f"{stage}_depth_loss", depth_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            depth_output = depth_output.squeeze(1)
+            depths = depths.squeeze(1)
+            depth_masks = torch.zeros_like(depths)
+            depth_masks = depth_masks.type_as(depths)
+            depth_masks[torch.where(depths > 0)] = 1
+
+            depth_loss = self.depth_loss_factor * self.depth_loss(depth_output, depths, depth_masks)
+            self.log(f"{stage}_depth_loss", depth_loss, prog_bar=True, logger=True, on_epoch=True)
 
         total_loss = sem_loss + depth_loss
 
