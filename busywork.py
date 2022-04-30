@@ -621,14 +621,14 @@ from predict_model import show_depth
 from scipy import stats
 
 exr_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/'
-new_depth_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-npy/'
-new_depth_png_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-png/'
+new_depth_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy_raw/'
+# new_depth_png_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/'
 
 if not os.path.exists(new_depth_dir): os.mkdir(new_depth_dir)
-if not os.path.exists(new_depth_png_dir): os.mkdir(new_depth_png_dir)
+# if not os.path.exists(new_depth_png_dir): os.mkdir(new_depth_png_dir)
 
 count = 0
-for exr_name in os.listdir(exr_dir)[45:]:
+for exr_name in os.listdir(exr_dir):
     # exr_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/depth_exr/00151Left.exr'
 
     depth = cv2.imread(exr_dir+exr_name, cv2.IMREAD_UNCHANGED)
@@ -648,20 +648,20 @@ for exr_name in os.listdir(exr_dir)[45:]:
     # sigma = np.std(disparity)
     # disparity = (disparity - mean_d) / sigma
 
-    min_d = np.min(np.abs(disparity))
-    max_d = np.max(disparity)
-
-    range = max_d - min_d
-    disparity = (disparity-min_d)/range
+    # min_d = np.min(np.abs(disparity))
+    # max_d = np.max(disparity)
+    #
+    # range = max_d - min_d
+    # disparity = (disparity-min_d)/range
     disparity[disparity < 0] = 0
 
     disparity_path = new_depth_dir + exr_name.replace('exr', 'npy')
     np.save(disparity_path, disparity)
 
-    disparity_png_path = new_depth_png_dir + exr_name.replace('exr', 'png')
-    d_img = show_depth(disparity)
+    # disparity_png_path = new_depth_png_dir + exr_name.replace('exr', 'png')
+    # d_img = show_depth(disparity)
 
-    save_png(disparity_png_path, d_img)
+    # save_png(disparity_png_path, d_img)
     # save_png('test.png', d_img)
     count += 1
     if count % 100 == 0:

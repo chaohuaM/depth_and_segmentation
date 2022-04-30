@@ -40,7 +40,7 @@ def GRAD_LOSS(z, z_fake):
 def _mask_input(input, mask=None):
     if mask is not None:
         input = input * mask
-        count = torch.sum(mask).data[0]
+        count = torch.sum(mask).item()
     else:
         count = np.prod(input.size(), dtype=np.float32).item()
     return input, count

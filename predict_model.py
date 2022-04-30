@@ -138,7 +138,7 @@ class PredictModel(object):
         def layer_hook(module, input, output):
             output = output[0].cpu().numpy()
             for feature in output:
-                print(feature.shape)
+
                 feature_maps.append(resize_and_centered(feature, (original_h, original_w), reverse=True))
 
         # hook handler必须定义在model的前向过程之前
@@ -169,16 +169,17 @@ def create_predict_model(model_weights_path, config_path):
 
 
 if __name__ == '__main__':
-    config_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/hparams.yaml'
-    ckpt_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_22_14_06_13/checkpoints/epoch=99-val_iou=0.871.ckpt'
+    config_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_26_14_44_15/hparams.yaml'
+    ckpt_path = 'new-logs/unet_dual_decoder_with_sa/2022_04_26_14_44_15/checkpoints/epoch=149-val_f1_score=0.886.ckpt'
     model_weights_path = ''
 
     pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
+    print("model loaded!")
     mode = 0
 
     # 可视化特征图
     if mode == 0:
-        image_path = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/00011Left.png'
+        image_path = 'dataset/oaisys-new/rgb/00120Right.png'
         img = cv2.imread(image_path, 1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -205,8 +206,8 @@ if __name__ == '__main__':
     while mode == 1:
         image_path = input('Input image filename:')
         try:
-            img = cv2.imread(image_path, 0)
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            img = cv2.imread(image_path, 3)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         except:
             print('Open Error! Try again!')
             continue
@@ -219,7 +220,7 @@ if __name__ == '__main__':
             cv2.imwrite('predicted_seg.png', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
 
             if len(pr_outputs) > 1:
-                pr_depth = pr_outputs[1]
+                pr_depth = pr_outputs[1][:, :500]
                 col_depth = show_depth(pr_depth)
                 cv2.imwrite('predicted_depth.png', col_depth)
 

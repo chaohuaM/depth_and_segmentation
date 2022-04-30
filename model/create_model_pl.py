@@ -7,29 +7,41 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 from model.unet_dual_decoder import unet_dual_decoder, unet_dual_decoder_with_sa
 
+from losses.depth_losses import BerHu_Loss
 from losses.ssi_loss import ScaleAndShiftInvariantLoss
 from utils.utils_metrics import binary_mean_iou
 import torchmetrics
 
 MODEL_NAME = ['unet', 'deeplabv3plus', 'unet_dual_decoder', 'unet_dual_decoder_with_sa']
+SEM_LOSS_FN = ['bce_loss', 'dice_loss']
+DEPTH_LOSS_FN = ['berhu_loss', 'ssi_loss']
 
 
 class MyModel(pl.LightningModule):
     def __init__(self, model_name, backbone, in_channels, num_classes, pretrained=None,
-                 focal_loss=0, dice_loss=1, depth_loss_factor=1.0, **kwargs):
+                 sem_loss_fn='bce_loss', depth_loss_fn='berhu_loss', depth_loss_factor=1.0,
+                 use_depth_mask=True, **kwargs):
         """
 
         :param model_name:
         :param backbone:
         :param in_channels:
         :param num_classes:
-        :param focal_loss:
-        :param dice_loss:
+        :param pretrained:
+        :param sem_loss_fn:
+        :param depth_loss_fn:
+        :param depth_loss_factor:
+        :param kwargs:
         """
         super().__init__()
 
         model_name = model_name.lower()
+        sem_loss_fn = sem_loss_fn.lower()
+        depth_loss_fn = depth_loss_fn.lower()
+
         assert model_name in MODEL_NAME, f"{model_name} is not in present supported model list:{MODEL_NAME}"
+        assert sem_loss_fn in SEM_LOSS_FN, f"{sem_loss_fn} is not in present supported semantic loss function list:{SEM_LOSS_FN}"
+        assert depth_loss_fn in DEPTH_LOSS_FN, f"{depth_loss_fn} is not in present supported depth loss function list:{DEPTH_LOSS_FN}"
 
         self.model_name = model_name
         if self.model_name == 'unet_dual_decoder':
@@ -43,26 +55,41 @@ class MyModel(pl.LightningModule):
                 encoder_weights=pretrained)
 
         self.num_classes = num_classes
-        self.focal_loss = focal_loss
-        self.dice_loss = dice_loss
+
         self.depth_loss_factor = depth_loss_factor
+        self.use_depth_mask = use_depth_mask
+
+        self.sem_loss_fn = sem_loss_fn
+        self.depth_loss_fn = depth_loss_fn
         self.save_hyperparameters()
 
-        self.sem_loss_fn = smp.losses.SoftBCEWithLogitsLoss()
-        if self.dice_loss:
-            self.sem_loss_fn = smp.losses.DiceLoss(mode='binary', from_logits=True)
+        if self.sem_loss_fn == 'bce_loss':
+            self.sem_loss = smp.losses.SoftBCEWithLogitsLoss()
+        elif self.sem_loss_fn == 'dice_loss':
+            self.sem_loss = smp.losses.DiceLoss(mode='binary', from_logits=True)
+
         if self.model_name in ['unet_dual_decoder', 'unet_dual_decoder_with_sa']:
-            self.depth_loss = ScaleAndShiftInvariantLoss()
+            if self.depth_loss_fn == 'berhu_loss':
+                self.depth_loss = BerHu_Loss
+            elif self.depth_loss_fn == 'ssi_loss':
+                self.depth_loss = ScaleAndShiftInvariantLoss()
         else:
             self.depth_loss = None
 
         self.f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5)
-        self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
+        # self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
+        self.iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
 
     def forward(self, image):
         output = self.model(image)
         # TODO 找到一种简单的方式来判断是一个还是两个返回值
         return output
+
+    def on_train_start(self) -> None:
+        # log hyperparams
+        self.logger.log_hyperparams(self.hparams,
+                                    {'val_f1_score': 0, 'train_f1_score': 0, 'val_iou': 0, 'train_iou': 0})
+        return super().on_train_start()
 
     def shared_step(self, batch, stage):
         images, masks, labels, depths = batch
@@ -73,7 +100,7 @@ class MyModel(pl.LightningModule):
 
         sem_outputs = outputs[0]
 
-        sem_loss = self.sem_loss_fn(sem_outputs, masks.float())
+        sem_loss = self.sem_loss(sem_outputs, masks.float())
 
         self.log(f"{stage}_sem_loss", sem_loss, prog_bar=True, logger=True, on_epoch=True)
 
@@ -83,9 +110,10 @@ class MyModel(pl.LightningModule):
             depth_output = outputs[1]
             depth_output = depth_output.squeeze(1)
             depths = depths.squeeze(1)
-            depth_masks = torch.zeros_like(depths)
+            depth_masks = torch.ones_like(depths)
             depth_masks = depth_masks.type_as(depths)
-            depth_masks[torch.where(depths > 0)] = 1
+            if self.use_depth_mask:
+                depth_masks[torch.where(depths == 0)] = 0
 
             depth_loss = self.depth_loss_factor * self.depth_loss(depth_output, depths, depth_masks)
             self.log(f"{stage}_depth_loss", depth_loss, prog_bar=True, logger=True, on_epoch=True)
@@ -99,6 +127,12 @@ class MyModel(pl.LightningModule):
 
     def shared_epoch_end(self, outputs, stage):
         # aggregate step metics
+
+        # f1_score = self.f1_score.compute()
+        # iou = self.iou.compute()
+        # metrics = {f"{stage}_f1_score": f1_score,
+        #            f"{stage}_iou": iou}
+        # self.log_dict(metrics, logger=True)
 
         self.log(f"{stage}_f1_score", self.f1_score.compute(), logger=True)
         self.log(f"{stage}_iou", self.iou.compute(), logger=True)
@@ -146,10 +180,11 @@ class MyModel(pl.LightningModule):
                             help='training data transform')
 
         # 损失函数相关
-        parser.add_argument('--dice_loss', default=0, type=int, required=False)
-        parser.add_argument('--focal_loss', default=0, type=int, required=False)
+        parser.add_argument('--sem_loss_fn', default='bce_loss', type=str, required=False)
+        parser.add_argument('--depth_loss_fn', default='berhu_loss', type=str, required=False)
+        parser.add_argument('--use_depth_mask', type=int, default=1, required=False)
         parser.add_argument('--depth_loss_factor', default=1.0, type=float, required=False,
-                            help='')
+                            help='the weight factor of the depth loss component')
 
         # 训练相关
         parser.add_argument('--epoch', default=100, type=int,
@@ -171,6 +206,7 @@ class TransferModelPL(MyModel):
 
 if __name__ == '__main__':
     model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=1)
+    # print(model.metric)
     # x = torch.zeros(2, 3, 512, 512)
     #
     # y = model.model(x)

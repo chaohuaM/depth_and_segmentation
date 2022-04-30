@@ -157,10 +157,10 @@ if __name__ == '__main__':
     ssi_loss = ScaleAndShiftInvariantLoss()
 
     import numpy as np
-    target1 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-npy/00030Left.npy')
-    target2 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/disparity-npy/00035Left.npy')
+    target1 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy/00030Left.npy')
+    # target2 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy/00035Left.npy')
     # target = [target1, target2]
-    target = torch.tensor([target1, target2])
+    target = torch.tensor([target1])
 
     predict = torch.rand_like(target)
 

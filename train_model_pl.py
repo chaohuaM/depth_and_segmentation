@@ -82,13 +82,13 @@ def train_model():
 
     timestamp = args.timestamp
     log_path = args.log_dir
-    tb_logger = pl_loggers.TensorBoardLogger(save_dir=log_path, name=model_name, version=timestamp)
-    csv_logger = pl_loggers.CSVLogger(save_dir=log_path, name=model_name,  version=timestamp)
+    tb_logger = pl_loggers.TensorBoardLogger(save_dir=log_path, name=model_name, version=timestamp, default_hp_metric=False)
+    # csv_logger = pl_loggers.CSVLogger(save_dir=log_path, name=model_name,  version=timestamp)
 
     ckpt_callback = ModelCheckpoint(save_top_k=5,
                                     monitor="val_f1_score",
                                     mode="max",
-                                    filename="{epoch}-{val_fscore:.3f}")
+                                    filename="{epoch}-{val_f1_score:.3f}")
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
     data_shape = [input_shape[0], input_shape[1], in_channels]
@@ -97,10 +97,10 @@ def train_model():
     #   读取数据集对应的txt
     # ---------------------------#
     with open(os.path.join(dataset_path, "ImageSets/train.txt"), "r") as f:
-        train_lines = f.readlines()
+        train_lines = f.readlines()[:100]
 
     with open(os.path.join(dataset_path, "ImageSets/val.txt"), "r") as f:
-        val_lines = f.readlines()
+        val_lines = f.readlines()[:50]
 
     train_dataset = RockDataset(train_lines, data_shape, num_classes, data_transform, dataset_path)
     val_dataset = RockDataset(val_lines, data_shape, num_classes, False, dataset_path)
@@ -117,7 +117,7 @@ def train_model():
                          gpus=gpus, max_epochs=epoch,
                          accumulate_grad_batches=accmulate_bs,
                          reload_dataloaders_every_n_epochs=5,
-                         logger=[tb_logger, csv_logger],
+                         logger=tb_logger,
                          callbacks=[ckpt_callback, lr_monitor])
 
     print("---------------- start training --------------")
