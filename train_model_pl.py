@@ -97,10 +97,10 @@ def train_model():
     #   读取数据集对应的txt
     # ---------------------------#
     with open(os.path.join(dataset_path, "ImageSets/train.txt"), "r") as f:
-        train_lines = f.readlines()[:100]
+        train_lines = f.readlines()
 
     with open(os.path.join(dataset_path, "ImageSets/val.txt"), "r") as f:
-        val_lines = f.readlines()[:50]
+        val_lines = f.readlines()
 
     train_dataset = RockDataset(train_lines, data_shape, num_classes, data_transform, dataset_path)
     val_dataset = RockDataset(val_lines, data_shape, num_classes, False, dataset_path)
