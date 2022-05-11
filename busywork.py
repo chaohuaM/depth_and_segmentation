@@ -45,6 +45,30 @@ def exr2png(exr_path, png_path):
     save_png(png_path, img)
 
 
+def visualize(image, mask, original_image=None, original_mask=None):
+    fontsize = 18
+
+    if original_image is None and original_mask is None:
+        f, ax = plt.subplots(2, 1, figsize=(8, 8))
+
+        ax[0].imshow(image)
+        ax[1].imshow(mask)
+    else:
+        f, ax = plt.subplots(2, 2, figsize=(8, 8))
+
+        ax[0, 0].imshow(original_image)
+        ax[0, 0].set_title('Original image', fontsize=fontsize)
+
+        ax[1, 0].imshow(original_mask)
+        ax[1, 0].set_title('Original mask', fontsize=fontsize)
+
+        ax[0, 1].imshow(image)
+        ax[0, 1].set_title('Transformed image', fontsize=fontsize)
+
+        ax[1, 1].imshow(mask)
+        ax[1, 1].set_title('Transformed mask', fontsize=fontsize)
+
+
 # # 转换深度图
 # file_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
 #
@@ -615,7 +639,7 @@ for img_path in glob.glob(img_dir + '*.png'):
 # change_color_opencv('/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/00009Left.png', 'test.png',
 #                     '/home/ch5225/Desktop/模拟数据/oaisys-new/sky=1/00009Left.png')
 
-
+'''
 # 深度图变视差图
 from predict_model import show_depth
 from scipy import stats
@@ -677,7 +701,7 @@ for exr_name in os.listdir(exr_dir):
 
 # plt.imshow(disparity)
 # plt.show()
-
+'''
 # model_type = "DPT_Large"  # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
 # # model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
 # # model_type = "MiDaS_small"  # MiDaS v2.1 - Small   (lowest accuracy, highest inference speed)
@@ -717,4 +741,113 @@ for exr_name in os.listdir(exr_dir):
 #
 # plt.imshow(output)
 # plt.show()
-''''''
+
+#
+# img_dir = '/home/ch5225/chaohua/MarsData/Data/Train/masks/masks'
+#
+# img_paths = os.listdir(img_dir)
+# test_paths = []
+#
+# for img_path in img_paths:
+#     test_path = "_".join(name for name in img_path.split("_")[:-1])
+#
+#     test_paths.append(test_path)
+#
+# train = list(set(test_paths))
+#
+# ftrain = open(os.path.join('/home/ch5225/chaohua/MarsData/Data/rockA+B/', 'train.txt'), 'w')
+#
+# for name in train:
+#     if name != '':
+#         ftrain.write(name+'\n')
+#
+# ftrain.close()
+
+
+import albumentations as A
+import cv2
+
+transform = A.Compose([
+    A.RandomSizedCrop(min_max_height=(250, 500), height=500, width=560),
+    A.HorizontalFlip(p=0.5),
+    A.VerticalFlip(p=0.5),
+    A.OneOf([
+        A.MotionBlur(p=0.2),  # 使用随机大小的内核将运动模糊应用于输入图像。
+        A.MedianBlur(blur_limit=3, p=0.1),  # 中值滤波
+        A.Blur(blur_limit=3, p=0.1),  # 使用随机大小的内核模糊输入图像。
+    ], p=0.9),
+    A.ShiftScaleRotate(border_mode=0),
+    # 随机应用仿射变换：平移，缩放和旋转输入
+    A.RandomBrightnessContrast(p=0.5),  # 随机明亮对比度
+    A.ColorJitter(p=0.5),
+    A.RandomGamma(p=0.5),
+])
+
+img_dir = '/home/ch5225/chaohua/MarsData/Data/rockA+B/images/'
+save_dir = '/home/ch5225/chaohua/MarsData/Data/rockA+B/aug_data/'
+aug_nums = 10
+
+new_img_dir = os.path.join(save_dir, 'images')
+new_depth_dir = os.path.join(save_dir, 'inv-depth-png')
+new_vis_mask_dir = os.path.join(save_dir, 'label_vis')
+new_mask_dir = os.path.join(save_dir, 'label_mask')
+new_depth_npy_dir = os.path.join(save_dir, 'inv-depth-01-npy')
+
+if not os.path.exists(new_mask_dir): os.makedirs(new_mask_dir)
+if not os.path.exists(new_img_dir): os.makedirs(new_img_dir)
+if not os.path.exists(new_vis_mask_dir): os.makedirs(new_vis_mask_dir)
+if not os.path.exists(new_depth_dir): os.makedirs(new_depth_dir)
+if not os.path.exists(new_depth_npy_dir): os.makedirs(new_depth_npy_dir)
+
+
+with open('/home/ch5225/chaohua/MarsData/Data/rockA+B/train.txt', 'r') as f:
+    train_lines = f.readlines()[:1]
+
+for count in range(len(train_lines)):
+    img_name = train_lines[count][:-1]
+
+    # img_name = '1044_1044MR0045730180204466E01_DXXX'
+    img_path = '/home/ch5225/chaohua/MarsData/Data/rockA+B/images/' + img_name + '.png'
+    mask_path = img_path.replace('images', 'label_mask')
+    vis_mask_path = img_path.replace('images', 'label_vis')
+    depth_path = img_path.replace('images', 'inv-depth-png')
+    depth_npy_path = img_dir.replace('images', 'inv-depth-01-npy') + img_name + '.npy'
+
+    image = cv2.imread(img_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    mask = cv2.imread(mask_path, -1)
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
+
+    vis_mask = cv2.imread(vis_mask_path)
+    vis_mask = cv2.cvtColor(vis_mask, cv2.COLOR_BGR2RGB)
+
+    depth = cv2.imread(depth_path)
+    depth = cv2.cvtColor(depth, cv2.COLOR_BGR2RGB)
+
+    depth_npy = np.load(depth_npy_path)
+
+    masks = [mask, vis_mask, depth, depth_npy]
+    mask_dir_names = [new_mask_dir, new_vis_mask_dir, new_depth_dir]
+
+    for i in range(aug_nums):
+
+        transformed = transform(image=image, masks=masks)
+
+        transformed_image = transformed['image']
+        transformed_masks = transformed['masks']
+
+        save_name = img_name + '_' + str(i) + '.png'
+
+        save_png(os.path.join(new_img_dir, save_name), cv2.cvtColor(transformed_image, cv2.COLOR_RGB2BGR))
+
+        for i in range(len(mask_dir_names)):
+            save_png(os.path.join(mask_dir_names[i], save_name), cv2.cvtColor(transformed_masks[i], cv2.COLOR_RGB2BGR))
+
+        np.save(os.path.join(new_depth_npy_dir, save_name.replace('.png', '.npy')), transformed_masks[-1])
+
+    # for i in range(len(masks)):
+    #     visualize(transformed_image, transformed_masks[i], original_image=image, original_mask=masks[i])
+
+    if count % 10 == 0:
+        print(count)

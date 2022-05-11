@@ -38,7 +38,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("new-logs/unet_dual_decoder_with_sa/2022_04_26_14_44_15/*/*149*")
+    model_paths = glob.glob("51-logs/*/*11*/*/*")
     for model_path in model_paths:
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
         config_path = '/'.join(model_path.split('/')[:-2]) + '/' + "hparams.yaml"
