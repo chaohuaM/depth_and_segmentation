@@ -23,7 +23,7 @@ if __name__ == "__main__":
     #   miou_mode为1代表仅仅获得预测结果。
     #   miou_mode为2代表仅仅计算miou。
     # ---------------------------------------------------------------------------#
-    miou_mode = 0
+    miou_mode = 3
     # ------------------------------#
     #   输入预测的图片类型：gray和rgb   #
     # ------------------------------#
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("51-logs/*/*11*/*/*")
+    model_paths = glob.glob("51-logs/*sa/*/*/*")
     for model_path in model_paths:
         print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/'
+        dataset_dir = 'dataset/rock_aug/'
         image_dir = os.path.join(dataset_dir, 'rgb')
         gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         pred_dir = os.path.join(miou_out_path, 'detection-results')
 
         # 有val.txt的时候
-        image_ids = open(os.path.join(dataset_dir, "ImageSets/test.txt"), 'r').read().splitlines()
+        image_ids = open(os.path.join(dataset_dir, "ImageSets/val.txt"), 'r').read().splitlines()
         # 直接读取文件夹里的文件名
         # image_ids = os.listdir(image_dir)
         # image_ids = [image_id[:-4] for image_id in image_ids]

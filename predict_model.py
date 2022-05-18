@@ -199,7 +199,7 @@ def create_predict_model(model_weights_path, config_path):
 
 if __name__ == '__main__':
     config_path = '51-logs/unet_dual_decoder_with_sa/2022_05_02_11_37_36/hparams.yaml'
-    ckpt_path = '51-logs/unet_dual_decoder_with_sa/2022_05_02_11_37_36/checkpoints/epoch=149-val_f1_score=0.890.ckpt'
+    ckpt_path = 'real-logs/unet_dual_decoder_with_sa/2022_05_12_18_26_12/checkpoints/epoch=74-val_f1_score=0.965.ckpt'
     model_weights_path = ''
 
     pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
@@ -211,37 +211,37 @@ if __name__ == '__main__':
 
     # 可视化特征图
     if mode == 0:
-        image_path = 'dataset/oaisys-new/rgb/00134Left.png'
+        image_path = 'dataset/rock_aug/rgb/1100_1100ML0048780070500633E01_DXXX.png'
         image_name = image_path.split('/')[-1]
         img = cv2.imread(image_path, 1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        layers = ['sa_blocks.0', 'sa_blocks.1', 'sa_blocks.2', 'sa_blocks.3', 'sa_blocks.4']
-        for layer in layers:
-            feature_maps = pr_net.get_feature_maps(input_image=img, layer_name=layer)
-            fig = plt.figure(dpi=800)
-            # plt.imshow(feature_maps[0], cmap='jet')
-            # plt.axis('off')
-            # plt.colorbar()
-            n_maps = len(feature_maps)
-            row = int(math.sqrt(n_maps))
-            col = row
-            while row*col < n_maps:
-                col += 1
-            for i in range(len(feature_maps)):
-                plt.subplot(row, col, i + 1)
-                im = plt.imshow(feature_maps[i], cmap='jet')
-                plt.axis('off')
+        layer = 'decoder2.blocks.4.conv2.2'
+        feature_maps = pr_net.get_feature_maps(input_image=img, layer_name=layer)
+        fig = plt.figure(dpi=300, figsize=[16, 12])
+        # plt.imshow(feature_maps[0], cmap='jet')
+        # plt.axis('off')
+        # plt.colorbar()
+        n_maps = len(feature_maps)
+        row = int(math.sqrt(n_maps))
+        col = row
+        while row*col < n_maps:
+            col += 1
+        for i in range(len(feature_maps)):
+            plt.subplot(row, col, i + 1)
+            im = plt.imshow(feature_maps[i], cmap='jet')
+            plt.colorbar()
+            plt.axis('off')
 
-            fig.tight_layout()  # 调整整体空白
-            plt.subplots_adjust(right=0.9, wspace=-0.5, hspace=0.1)  # 调整子图间距
-            position = fig.add_axes([0.9, 0.1, 0.02, 0.78])          # 位置[左,下,右,上]
-            fig.colorbar(im, cax=position)
+        fig.tight_layout()  # 调整整体空白
+        # plt.subplots_adjust(right=0.9, wspace=0.1, hspace=0.1)  # 调整子图间距
+        # position = fig.add_axes([0.9, 0.1, 0.01, 0.78])          # 位置[左,下,右,上]
+        # fig.colorbar(im, cax=position)
 
-            plt.show()
-            fig_path = image_name.replace('.png', '-'+layer+'.png')
-            plt.savefig(fig_path)
-            print("feature maps: "+fig_path+" saved!")
+        plt.show()
+        fig_path = image_name.replace('.png', '-'+layer+'.png')
+        plt.savefig(fig_path, dpi=600, bbox_inches='tight')
+        # print("feature maps: "+fig_path+" saved!")
 
     # 预测图片
     while mode == 1:

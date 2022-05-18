@@ -83,7 +83,7 @@ class RockDataset(Dataset):
         self.color_jitter = True
         self.img_dir = os.path.join(self.dataset_path, 'rgb')
         self.label_dir = os.path.join(self.dataset_path, 'semantic_01_label')
-        self.depth_dir = os.path.join(self.dataset_path, 'depth_npy')
+        self.depth_dir = os.path.join(self.dataset_path, 'inv-depth-01-npy')
 
     def __len__(self):
         return self.length
@@ -118,7 +118,7 @@ class RockDataset(Dataset):
             x_img = cv2.imread(img_path, 1)
             x_img = cv2.cvtColor(x_img, cv2.COLOR_BGR2RGB)
 
-        y_label = cv2.imread(label_path, -1)
+        y_label = cv2.imread(label_path, 0)
         depth_img = np.load(depth_img_path)
         # -------------------------------#
         #   数据增强
