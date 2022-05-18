@@ -114,37 +114,48 @@ def visualize(image, mask, original_image=None, original_mask=None):
 #         print(count)
 
 
-# # 将标签中的rgb值转为为0和1
-# img_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/rgb/'
-# label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01/'
-# new_label_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label/'
-# label_vis_dir = '/home/ch5225/Desktop/模拟数据/oaisys-new/semantic_01_label_vis/'
-#
-# if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
-# if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
-#
-# count = 0
-# for img_path in glob.glob(label_dir + '*.png'):
-#     img_name = img_path.split('/')[-1]
-#     img = cv2.imread(img_path, 0)
-#     h, w = img.shape
-#
-#     label = np.zeros([h, w], dtype=np.uint8)
-#     label[img >= 100] = 1
-#
-#     save_png(new_label_dir + '/' + img_name, label)
-#
-#     save_png(new_label_dir + '/' + img_name, label)
-#
-#     raw_img = cv2.imread(img_dir + '/' + img_name)
-#     vis_img = blend_image(raw_img, label)
-#
-#     save_png(label_vis_dir + '/' + img_name, vis_img)
-#
-#     count += 1
-#
-#     if count % 200 == 0:
-#         print(count)
+# 将标签中的rgb值转为为0和1
+img_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/JPEGImages'
+label_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/SegmentationClassPNG/'
+new_label_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/label/'
+label_vis_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/label_vis/'
+rock_txt_path = '/home/ch5225/chaohua/Mars-seg data set/MSL/rocks-images.txt'
+
+if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
+
+color_list = [[128, 0, 0], [0, 128, 0], [128, 128, 0], [0, 0, 128],
+              [128, 0, 128], [0, 128, 128], [128, 128, 128],
+              [64, 0, 0], [192, 0, 0]]
+count = 0
+for img_path in glob.glob(label_dir + '*.png'):
+    img_name = img_path.split('/')[-1]
+    img = cv2.imread(img_path, 1)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    h, w, _ = img.shape
+
+    label = np.zeros([h, w], dtype=np.uint8)
+    for i in range(len(color_list)):
+        class_map = np.equal(img[..., :], color_list[i])
+        class_map = np.all(class_map, axis=-1)
+        label[class_map] = i + 1
+
+    save_png(new_label_dir + '/' + img_name, label)
+
+    raw_img = cv2.imread(img_dir + '/' + img_name.replace('.png', '.jpg'))
+
+    vis_img = cv2.addWeighted(raw_img, 1, cv2.cvtColor(img, cv2.COLOR_RGB2BGR), 0.5, 0)
+
+    save_png(label_vis_dir + '/' + img_name, vis_img)
+
+    count += 1
+
+    if count % 200 == 0:
+        print(count)
+
+    if 5 in np.unique(label):
+        with open(rock_txt_path, 'a') as f:
+            f.write(img_name.replace('.png', '\n'))
 
 
 # 测试dataloader函数
@@ -294,69 +305,69 @@ import json
 # with open('basic_args.json', 'r') as f:
 #     args.__dict__ = json.load(f)
 
-'''
+
 # 采用现成方法获得单目深度估计图
-import cv2
-import torch
-from predict_model import show_depth
+# import cv2
+# import torch
+# from predict_model import show_depth
+#
+# import matplotlib.pyplot as plt
+#
+# img_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/JPEGImages/'
+# depth_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/inv-depth-png/'
+# depth_npy_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/inv-depth-npy/'
+#
+# if not os.path.exists(depth_dir): os.makedirs(depth_dir)
+# if not os.path.exists(depth_npy_dir): os.makedirs(depth_npy_dir)
+#
+#
+# model_type = "DPT_Large"  # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
+# # model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
+# # model_type = "MiDaS_small"  # MiDaS v2.1 - Small   (lowest accuracy, highest inference speed)
+#
+# midas = torch.hub.load("intel-isl/MiDaS", model_type)
+#
+# device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+# midas.to(device)
+# midas.eval()
+#
+# midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+#
+# if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
+#     transform = midas_transforms.dpt_transform
+# else:
+#     transform = midas_transforms.small_transform
+#
+# count = 0
+# for img_path in glob.glob(img_dir + '*.jpg'):
+#     img_name = img_path.split('/')[-1]
+#     # img_path = '/home/ch5225/chaohua/lunar_rocky_landscape/images/render_clean/render1164.png'
+#     img = cv2.imread(img_path)
+#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#
+#     input_batch = transform(img).to(device)
+#
+#     with torch.no_grad():
+#         prediction = midas(input_batch)
+#
+#         prediction = torch.nn.functional.interpolate(
+#             prediction.unsqueeze(1),
+#             size=img.shape[:2],
+#             mode="bicubic",
+#             align_corners=False,
+#         ).squeeze()
+#
+#     output = prediction.cpu().numpy()
+#     np.save(depth_npy_dir+'/'+img_name.replace('.png', '.npy'), output)
+#
+#     depth_img = show_depth(output)
+#     save_png(depth_dir+'/'+img_name, depth_img)
+#
+#     count += 1
+#
+#     if count % 20 == 0:
+#         print(count)
 
-import matplotlib.pyplot as plt
-
-img_dir = '/home/ch5225/chaohua/MarsData/Data/rockA&B/images/'
-depth_dir = '/home/ch5225/chaohua/MarsData/Data/rockA&B/inv-depth-png/'
-depth_npy_dir = '/home/ch5225/chaohua/MarsData/Data/rockA&B/inv-depth-npy/'
-
-if not os.path.exists(depth_dir): os.makedirs(depth_dir)
-if not os.path.exists(depth_npy_dir): os.makedirs(depth_npy_dir)
-
-
-model_type = "DPT_Large"  # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
-# model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
-# model_type = "MiDaS_small"  # MiDaS v2.1 - Small   (lowest accuracy, highest inference speed)
-
-midas = torch.hub.load("intel-isl/MiDaS", model_type)
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-midas.to(device)
-midas.eval()
-
-midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
-
-if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
-    transform = midas_transforms.dpt_transform
-else:
-    transform = midas_transforms.small_transform
-
-count = 0
-for img_path in glob.glob(img_dir + '*.png'):
-    img_name = img_path.split('/')[-1]
-    # img_path = '/home/ch5225/chaohua/lunar_rocky_landscape/images/render_clean/render1164.png'
-    img = cv2.imread(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    input_batch = transform(img).to(device)
-
-    with torch.no_grad():
-        prediction = midas(input_batch)
-
-        prediction = torch.nn.functional.interpolate(
-            prediction.unsqueeze(1),
-            size=img.shape[:2],
-            mode="bicubic",
-            align_corners=False,
-        ).squeeze()
-
-    output = prediction.cpu().numpy()
-    np.save(depth_npy_dir+'/'+img_name.replace('.png', '.npy'), output)
-
-    depth_img = show_depth(output)
-    save_png(depth_dir+'/'+img_name, depth_img)
-
-    count += 1
-
-    if count % 20 == 0:
-        print(count)
-'''
 
 # pc = point_cloud_generator(focal_length=2383.60, scalingfactor=1.0)
 #
@@ -387,8 +398,8 @@ for img_path in glob.glob(img_dir + '*.png'):
 # # 将标签中的rgb值转为为0和1
 # import glob
 #
-# label_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/clean/'
-# new_label_dir = '/home/ch5225/chaohua/lunar_rocky_landscape/images/labels/'
+# label_dir = '/home/ch5225/chaohua/Mars-seg data set/MER/SegmentationClassPNG/'
+# new_label_dir = '/home/ch5225/chaohua/Mars-seg data set/MER/label/'
 #
 # if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
 #
@@ -763,7 +774,7 @@ for exr_name in os.listdir(exr_dir):
 #
 # ftrain.close()
 
-
+'''
 import albumentations as A
 import cv2
 
@@ -851,3 +862,4 @@ for count in range(len(train_lines)):
 
     if count % 10 == 0:
         print(count)
+'''
