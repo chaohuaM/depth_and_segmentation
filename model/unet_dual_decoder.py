@@ -190,9 +190,12 @@ if __name__ == '__main__':
 
     x = torch.zeros(2, 3, 512, 512)
     net = unet_dual_decoder_with_sa()
+    net.eval()
+    # y = net(x)
+    # for u in y:
+    #     print(u.shape)
+    # summary(net.to('cuda'), (3, 512, 512))
 
-    y = net(x)
-    for u in y:
-        print(u.shape)
-    summary(net.to('cuda'), (3, 512, 512))
+    for param in net.encoder.layer4[0].conv1.parameters():
+        print(param.shape)
 

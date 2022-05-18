@@ -150,6 +150,35 @@ class PredictModel(object):
 
         return feature_maps
 
+    def get_dsa_mask(self, input_image):
+        original_h = input_image.shape[0]
+        original_w = input_image.shape[1]
+        feature_maps = []
+
+        def layer_hook(module, input, output):
+            output = output[0].cpu().numpy()
+            for feature in output:
+                feature_maps.append(resize_and_centered(feature, (original_h, original_w), reverse=True))
+
+        # hook handler必须定义在model的前向过程之前
+        hook0 = self.net.get_submodule('sa_blocks.0').register_forward_hook(layer_hook)
+        hook1 = self.net.get_submodule('sa_blocks.1').register_forward_hook(layer_hook)
+        hook2 = self.net.get_submodule('sa_blocks.2').register_forward_hook(layer_hook)
+        hook3 = self.net.get_submodule('sa_blocks.3').register_forward_hook(layer_hook)
+        hook4 = self.net.get_submodule('sa_blocks.4').register_forward_hook(layer_hook)
+
+        # 预测图片，相当于执行了model.forward的过程，必须要有此过程才会进行hook操作
+        with torch.no_grad():
+            self.detect_image(input_image)
+        # 移除hook handler
+        hook0.remove()
+        hook1.remove()
+        hook2.remove()
+        hook3.remove()
+        hook4.remove()
+
+        return feature_maps
+
 
 def create_predict_model_pl(checkpoint_path, config_path):
     model = MyModel.load_from_checkpoint(checkpoint_path=checkpoint_path, hparams_file=config_path).model

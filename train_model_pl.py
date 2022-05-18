@@ -32,7 +32,7 @@ def train_model():
 
     # 系统相关
     parser.add_argument('--seed', default=2022, help='pl training seed for reproducibility', required=False)
-    parser.add_argument('--gpus', default=1, help='cuda availability', nargs="*", type=int, required=False)
+    parser.add_argument('--gpus', default=[0], help='cuda availability', nargs="*", type=int, required=False)
     parser.add_argument('--gpu_bs', default=8, type=int, required=False,
                         help='the proper batch sizes for the gpu, set smaller number when OOM ')
     parser.add_argument('--num_workers', default=6, type=int, required=False)
@@ -69,6 +69,9 @@ def train_model():
     batch_size = args.batch_size
     gpu_bs = args.gpu_bs
     accmulate_bs = int(batch_size/gpu_bs)
+    if batch_size <= gpu_bs:
+        gpu_bs = batch_size
+        accmulate_bs = None
     # ------------------------------#
     #   数据集路径
     # ------------------------------#
@@ -116,7 +119,7 @@ def train_model():
     trainer = pl.Trainer(default_root_dir=log_path,
                          gpus=gpus, max_epochs=epoch,
                          accumulate_grad_batches=accmulate_bs,
-                         reload_dataloaders_every_n_epochs=5,
+                         reload_dataloaders_every_n_epochs=1,
                          logger=tb_logger,
                          callbacks=[ckpt_callback, lr_monitor])
 

@@ -120,8 +120,11 @@ class MyModel(pl.LightningModule):
 
         total_loss = sem_loss + depth_loss
 
-        self.f1_score.update(sem_outputs.view(-1), masks.view(-1))
-        self.iou.update(sem_outputs.view(-1), masks.view(-1))
+        self.f1_score(sem_outputs.view(-1), masks.view(-1))
+        self.iou(sem_outputs.view(-1), masks.view(-1))
+
+        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
+        self.log(f"{stage}_iou", self.iou, logger=True)
 
         return total_loss
 
@@ -134,8 +137,9 @@ class MyModel(pl.LightningModule):
         #            f"{stage}_iou": iou}
         # self.log_dict(metrics, logger=True)
 
-        self.log(f"{stage}_f1_score", self.f1_score.compute(), logger=True)
-        self.log(f"{stage}_iou", self.iou.compute(), logger=True)
+        # self.log(f"{stage}_f1_score", self.f1_score, logger=True)
+        # self.log(f"{stage}_iou", self.iou, logger=True)
+        pass
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")

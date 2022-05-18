@@ -7,7 +7,9 @@ from tqdm import tqdm
 
 from predict_model import create_predict_model_pl, blend_image, show_depth
 from utils.utils_metrics import compute_mIoU, show_results
-
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
 '''
 进行指标评估需要注意以下几点：
 1、该文件生成的图为灰度图，因为值比较小，按照JPG形式的图看是没有显示效果的，所以看到近似全黑的图是正常的。
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------#
     model_paths = glob.glob("51-logs/*/*11*/*/*")
     for model_path in model_paths:
+        print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
         config_path = '/'.join(model_path.split('/')[:-2]) + '/' + "hparams.yaml"
         ckpt_path = model_path
@@ -117,3 +120,49 @@ if __name__ == "__main__":
                                                             name_classes)  # 执行计算mIoU的函数
             print("Get miou done.")
             show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)
+
+        if miou_mode == 3:
+            layers = ['sa_blocks.0', 'sa_blocks.1', 'sa_blocks.2', 'sa_blocks.3', 'sa_blocks.4']
+            pred_dsa_mask_dir = os.path.join(miou_out_path, 'detection-dsa-mask-results')
+
+            if not os.path.exists(pred_dsa_mask_dir):
+                os.makedirs(pred_dsa_mask_dir)
+
+            pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
+            print("Load model done.")
+
+            print("Get predict dsa-mask.")
+            for image_id in tqdm(image_ids):
+                image_path = os.path.join(image_dir, image_id + '.png')
+                if input_type == 'rgb':
+                    img = cv2.imread(image_path, 1)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                else:
+                    img = cv2.imread(image_path, 0)
+                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                
+                dsa_masks = pr_net.get_dsa_mask(input_image=img)
+                for idx in range(len(layers)):
+                    layer = layers[idx]
+                    fig = plt.figure(dpi=400)
+                    # plt.imshow(feature_maps[0], cmap='jet')
+                    # plt.axis('off')
+                    # plt.colorbar()
+                    im = plt.imshow(dsa_masks[idx], cmap='jet')
+                    plt.axis('off')
+
+                    fig.tight_layout()  # 调整整体空白
+                    plt.subplots_adjust(right=0.9, wspace=-0.5, hspace=0.1)  # 调整子图间距
+                    position = fig.add_axes([0.9, 0.1, 0.02, 0.78])  # 位置[左,下,右,上]
+                    fig.colorbar(im, cax=position)
+
+                    # plt.show()
+                    fig_path = os.path.join(pred_dsa_mask_dir, image_id + '-' + layer + '.png')
+                    plt.savefig(fig_path)
+
+                    plt.clf()
+                    plt.close()
+
+
+
+
