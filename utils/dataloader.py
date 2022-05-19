@@ -107,7 +107,7 @@ class RockDataset(Dataset):
         '''
         img_path = os.path.join(self.img_dir, name + ".png")
         label_path = os.path.join(self.label_dir, name + ".png")
-        # TODO 明确用什么格式的图片，是相对深度还是绝对深度, 目前来看应该是inv-depth
+        # 最好使用逆深度，而且进行归一化『0，1』
         depth_img_path = os.path.join(self.depth_dir, name + ".npy")
 
         # 以50%概率读取成灰度图 再转换成rgb，只有亮度信息
@@ -138,16 +138,18 @@ class RockDataset(Dataset):
                     self.num_classes, label_path, len(np.unique(y_label)))
             )
         y_label = y_label[np.newaxis, :, :]
+
+        # 读取深度信息
+        depth_img = np.array(depth_img, np.float32)
+        depth_img = depth_img[np.newaxis, :, :]
         # -------------------------------------------------------#
         #   转化成one_hot的形式
         # -------------------------------------------------------#
-        seg_labels = np.eye(self.num_classes+1)[y_label.reshape([-1])][:, 1:]  # 丢弃第一类，是背景类
-        seg_labels = seg_labels.reshape((self.num_classes, int(self.input_shape[0]), int(self.input_shape[1])))
+        # seg_labels = np.eye(self.num_classes+1)[y_label.reshape([-1])][:, 1:]  # 丢弃第一类，是背景类
+        # seg_labels = seg_labels.reshape((self.num_classes, int(self.input_shape[0]), int(self.input_shape[1])))
 
-        depth_img = np.array(depth_img, np.float32)
-        depth_img = depth_img[np.newaxis, :, :]
-
-        return x_img, y_label, seg_labels, depth_img
+        # return x_img, y_label, seg_labels, depth_img
+        return x_img, y_label, depth_img
 
     def _get_random_data(self, image, label, depth, jitter=.3, hue=.1, sat=1.5, val=1.5):
         h, w, c = self.input_shape[0], self.input_shape[1], self.input_shape[2]

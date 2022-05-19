@@ -13,13 +13,13 @@ from utils.utils_metrics import binary_mean_iou
 import torchmetrics
 
 MODEL_NAME = ['unet', 'deeplabv3plus', 'unet_dual_decoder', 'unet_dual_decoder_with_sa']
-SEM_LOSS_FN = ['bce_loss', 'dice_loss']
+SEM_LOSS_FN = ['ce_loss', 'dice_loss']
 DEPTH_LOSS_FN = ['berhu_loss', 'ssi_loss']
 
 
 class MyModel(pl.LightningModule):
     def __init__(self, model_name, backbone, in_channels, num_classes, pretrained=None,
-                 sem_loss_fn='bce_loss', depth_loss_fn='berhu_loss', depth_loss_factor=1.0,
+                 sem_loss_fn='ce_loss', depth_loss_fn='berhu_loss', depth_loss_factor=1.0,
                  use_depth_mask=True, **kwargs):
         """
 
@@ -63,8 +63,11 @@ class MyModel(pl.LightningModule):
         self.depth_loss_fn = depth_loss_fn
         self.save_hyperparameters()
 
-        if self.sem_loss_fn == 'bce_loss':
-            self.sem_loss = smp.losses.SoftBCEWithLogitsLoss()
+        if self.sem_loss_fn == 'ce_loss':
+            if self.num_classes == 1:   # 二类分类情况下采用bce-loss
+                self.sem_loss = smp.losses.SoftBCEWithLogitsLoss()
+            else:                       # 多类别时使用ce-loss
+                self.sem_loss = smp.losses.SoftCrossEntropyLoss()
         elif self.sem_loss_fn == 'dice_loss':
             self.sem_loss = smp.losses.DiceLoss(mode='binary', from_logits=True)
 
@@ -91,8 +94,8 @@ class MyModel(pl.LightningModule):
                                     {'val_f1_score': 0, 'train_f1_score': 0, 'val_iou': 0, 'train_iou': 0})
         return super().on_train_start()
 
-    def shared_step(self, batch, stage):
-        images, masks, labels, depths = batch
+    def shared_step(self, batch, batch_idx, stage):
+        images, masks, depths = batch
 
         outputs = self.forward(images)
 
@@ -120,26 +123,24 @@ class MyModel(pl.LightningModule):
 
         total_loss = sem_loss + depth_loss
 
+        if 'sa' in self.model_name:
+            if batch_idx == 1 and stage == 'val':
+                sa_maps = outputs[2]
+                for idx, sa_map in enumerate(sa_maps):
+                    self.log(str(batch_idx)+"sa-map-"+str(idx), sa_map[0])
+
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))
-
-        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
-        self.log(f"{stage}_iou", self.iou, logger=True)
 
         return total_loss
 
     def shared_epoch_end(self, outputs, stage):
-        # aggregate step metics
 
-        # f1_score = self.f1_score.compute()
-        # iou = self.iou.compute()
-        # metrics = {f"{stage}_f1_score": f1_score,
-        #            f"{stage}_iou": iou}
-        # self.log_dict(metrics, logger=True)
+        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
+        self.log(f"{stage}_iou", self.iou, logger=True)
 
-        # self.log(f"{stage}_f1_score", self.f1_score, logger=True)
-        # self.log(f"{stage}_iou", self.iou, logger=True)
-        pass
+        self.iou.reset()
+        self.f1_score.reset()
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")
@@ -184,7 +185,7 @@ class MyModel(pl.LightningModule):
                             help='training data transform')
 
         # 损失函数相关
-        parser.add_argument('--sem_loss_fn', default='bce_loss', type=str, required=False)
+        parser.add_argument('--sem_loss_fn', default='ce_loss', type=str, required=False)
         parser.add_argument('--depth_loss_fn', default='berhu_loss', type=str, required=False)
         parser.add_argument('--use_depth_mask', type=int, default=1, required=False)
         parser.add_argument('--depth_loss_factor', default=1.0, type=float, required=False,
@@ -209,7 +210,7 @@ class TransferModelPL(MyModel):
 
 
 if __name__ == '__main__':
-    model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=1)
+    model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
     # print(model.metric)
     # x = torch.zeros(2, 3, 512, 512)
     #

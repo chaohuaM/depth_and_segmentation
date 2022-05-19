@@ -171,7 +171,7 @@ class UnetDualDecoder(nn.Module):
 
         final2 = self.final_output2(outputs2[-1])
 
-        return final1, final2
+        return final1, final2, sa_maps
 
 
 def unet_dual_decoder(in_channels=3, num_classes=2, encoder_name='resnet18'):
@@ -183,7 +183,6 @@ def unet_dual_decoder_with_sa(in_channels=3, num_classes=2, encoder_name='resnet
 
 
 if __name__ == '__main__':
-    from torchsummary import summary
 
     import torch
     from torchsummary import summary
@@ -191,11 +190,12 @@ if __name__ == '__main__':
     x = torch.zeros(2, 3, 512, 512)
     net = unet_dual_decoder_with_sa()
     net.eval()
-    # y = net(x)
-    # for u in y:
-    #     print(u.shape)
+    o1, o2, sa_maps = net(x)
+    print(o1.shape)
+    print(o2.shape)
+    print(len(sa_maps))
     # summary(net.to('cuda'), (3, 512, 512))
 
-    for param in net.encoder.layer4[0].conv1.parameters():
-        print(param.shape)
+    # for param in net.sa_blocks[3].conv.parameters():
+    #     print(param)
 

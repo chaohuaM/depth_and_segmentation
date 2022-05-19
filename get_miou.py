@@ -70,6 +70,7 @@ if __name__ == "__main__":
 
         print("images number：", len(image_ids))
 
+        # 获得预测结果
         if miou_mode == 0 or miou_mode == 1:
             if not os.path.exists(pred_dir):
                 os.makedirs(pred_dir)
@@ -109,11 +110,11 @@ if __name__ == "__main__":
                 if len(pr_outputs) > 1:
                     pr_depth = pr_outputs[1]
                     col_depth = show_depth(pr_depth)
-
                     cv2.imwrite(os.path.join(pred_depth_dir, image_id + ".png"), col_depth)
 
             print("Get predict result done.")
 
+        # 计算精度指标
         if miou_mode == 0 or miou_mode == 2:
             print("Get miou.")
             hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes,
