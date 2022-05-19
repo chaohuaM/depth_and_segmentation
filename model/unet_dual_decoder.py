@@ -16,10 +16,12 @@ class SpatialAttentionModule(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, 1, 1)
+        self.bn = nn.BatchNorm2d(1)
         self.norm = nn.Sigmoid()
 
     def forward(self, inputs):
         mask = self.conv(inputs)
+        mask = self.bn(mask)
         mask = self.norm(mask)
 
         return mask

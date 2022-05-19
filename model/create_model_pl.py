@@ -2,6 +2,10 @@
 # @Time    : 2022/4/3 下午1:58
 # @File    : create_model_pl.py
 
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+
 import torch
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
@@ -124,38 +128,51 @@ class MyModel(pl.LightningModule):
         total_loss = sem_loss + depth_loss
 
         if 'sa' in self.model_name:
-            if batch_idx == 1 and stage == 'val':
+            if stage == 'val' and batch_idx == 1:
                 sa_maps = outputs[2]
                 for idx, sa_map in enumerate(sa_maps):
-                    self.log(str(batch_idx)+"sa-map-"+str(idx), sa_map[0])
+                    self.logger.experiment.add_image(str(batch_idx)+"sa-map-"+str(idx), sa_map[0], global_step=self.global_step)
+                    fig = plt.figure()
+                    feature_map = sa_map[0][0].cpu().numpy()
+                    plt.imshow(feature_map, cmap='jet', vmax=1.0, vmin=0.0)
+                    plt.colorbar()
+                    # plt.axis('off')
+                    self.logger.experiment.add_figure(str(batch_idx)+"sa-map-f-"+str(idx), fig, global_step=self.global_step)
 
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))
+
+        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
+        self.log(f"{stage}_iou", self.iou, logger=True)
 
         return total_loss
 
     def shared_epoch_end(self, outputs, stage):
 
-        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
-        self.log(f"{stage}_iou", self.iou, logger=True)
-
-        self.iou.reset()
-        self.f1_score.reset()
+        # self.f1_score.compute()
+        # self.iou.compute()
+        #
+        # self.log(f"{stage}_f1_score", self.f1_score, logger=True)
+        # self.log(f"{stage}_iou", self.iou, logger=True)
+        #
+        # self.iou.reset()
+        # self.f1_score.reset()
+        pass
 
     def training_step(self, batch, batch_idx):
-        return self.shared_step(batch, "train")
+        return self.shared_step(batch, batch_idx, "train")
 
     def training_epoch_end(self, outputs):
         return self.shared_epoch_end(outputs, "train")
 
     def validation_step(self, batch, batch_idx):
-        return self.shared_step(batch, "val")
+        return self.shared_step(batch, batch_idx, "val")
 
     def validation_epoch_end(self, outputs):
         return self.shared_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return self.shared_step(batch, "test")
+        return self.shared_step(batch, batch_idx, "test")
 
     def test_epoch_end(self, outputs):
         return self.shared_epoch_end(outputs, "test")
@@ -203,14 +220,13 @@ class MyModel(pl.LightningModule):
 
 
 class TransferModelPL(MyModel):
-    def __init__(self):
-        super(TransferModelPL, self).__init__()
-        for param in self.model.encoder.parameters():
-            param.requires_grad = False
+    def __init__(self, model_name, backbone, in_channels, num_classes):
+        super(TransferModelPL, self).__init__(model_name, backbone, in_channels, num_classes)
+        self.model.encoder.freeze()
 
 
 if __name__ == '__main__':
-    model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
+    # model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
     # print(model.metric)
     # x = torch.zeros(2, 3, 512, 512)
     #
@@ -219,3 +235,4 @@ if __name__ == '__main__':
     #     print(u.shape)
 
     # tl_unet = TransferModel()
+    model = TransferModelPL(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
