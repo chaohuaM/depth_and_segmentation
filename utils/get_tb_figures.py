@@ -47,9 +47,8 @@ if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
 
-ims = []
-
 for image_tag in image_tags:
+    ims = []
     count = 0
     for event in summary_iterator(event_filename):
         for v in event.summary.value:
