@@ -40,7 +40,7 @@ def fig2data(fig):
 
 
 event_filename = '../test-logs/unet_dual_decoder_with_sa/2022_05_20_01_43_19/events.out.tfevents.1652982203.ch5225.5274.0'
-out_dir = './dsa-map/'
+out_dir = '../dataset/rockA+B/dsa-map/'
 image_tags = ['1sa-map-0', '1sa-map-1', '1sa-map-2', '1sa-map-3', '1sa-map-4']
 
 if not os.path.exists(out_dir):
