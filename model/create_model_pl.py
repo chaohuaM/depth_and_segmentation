@@ -1,7 +1,8 @@
 # @Author  : ch
 # @Time    : 2022/4/3 下午1:58
 # @File    : create_model_pl.py
-
+import os
+import numpy as np
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -83,7 +84,7 @@ class MyModel(pl.LightningModule):
         else:
             self.depth_loss = None
 
-        self.f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5)
+        self.f1_score = torchmetrics.F1Score(num_classes=num_classes + 1, threshold=0.5)
         # self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
         self.iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
 
@@ -96,6 +97,11 @@ class MyModel(pl.LightningModule):
         # log hyperparams
         self.logger.log_hyperparams(self.hparams,
                                     {'val_f1_score': 0, 'train_f1_score': 0, 'val_iou': 0, 'train_iou': 0})
+
+        if 'sa' in self.model_name:
+            sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
+            if not os.path.exist(sa_map_dir):
+                os.makedirs(sa_map_dir)
         return super().on_train_start()
 
     def shared_step(self, batch, batch_idx, stage):
@@ -128,16 +134,19 @@ class MyModel(pl.LightningModule):
         total_loss = sem_loss + depth_loss
 
         if 'sa' in self.model_name:
-            if stage == 'val' and batch_idx == 1:
-                sa_maps = outputs[2]
+            if stage == 'val':
+                sa_maps = [x.cpu().numpy() for x in outputs[2]]
+                sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
+                sa_map_npy_path = os.path.join(sa_map_dir, "batch-"+str(batch_idx)+"-epoch-"+str(self.current_epoch)+".npy")
+                sa_npy = np.array(sa_maps)
+                np.save(sa_map_npy_path, sa_npy)
                 for idx, sa_map in enumerate(sa_maps):
-                    self.logger.experiment.add_image(str(batch_idx)+"sa-map-"+str(idx), sa_map[0], global_step=self.global_step)
                     fig = plt.figure()
-                    feature_map = sa_map[0][0].cpu().numpy()
-                    plt.imshow(feature_map, cmap='jet', vmax=1.0, vmin=0.0)
+                    feature_map = sa_map[0][0]
+                    plt.imshow(feature_map, cmap='jet')
                     plt.colorbar()
                     # plt.axis('off')
-                    self.logger.experiment.add_figure(str(batch_idx)+"sa-map-f-"+str(idx), fig, global_step=self.global_step)
+                    self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-f-"+str(idx), fig, global_step=self.current_epoch)
 
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))
@@ -179,7 +188,8 @@ class MyModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
+        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.75)
         return [optimizer], [lr_scheduler]
 
     @staticmethod
@@ -204,7 +214,7 @@ class MyModel(pl.LightningModule):
         # 损失函数相关
         parser.add_argument('--sem_loss_fn', default='ce_loss', type=str, required=False)
         parser.add_argument('--depth_loss_fn', default='berhu_loss', type=str, required=False)
-        parser.add_argument('--use_depth_mask', type=int, default=1, required=False)
+        parser.add_argument('--use_depth_mask', type=int, default=0, required=False)
         parser.add_argument('--depth_loss_factor', default=1.0, type=float, required=False,
                             help='the weight factor of the depth loss component')
 
@@ -226,8 +236,8 @@ class TransferModelPL(MyModel):
 
 
 if __name__ == '__main__':
-    # model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
-    # print(model.metric)
+    model = MyModel(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
+    print(model)
     # x = torch.zeros(2, 3, 512, 512)
     #
     # y = model.model(x)
@@ -235,4 +245,4 @@ if __name__ == '__main__':
     #     print(u.shape)
 
     # tl_unet = TransferModel()
-    model = TransferModelPL(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)
+    # model = TransferModelPL(model_name='unet', backbone='resnet18', in_channels=1, num_classes=9)

@@ -199,7 +199,7 @@ def create_predict_model(model_weights_path, config_path):
 
 if __name__ == '__main__':
     config_path = '51-logs/unet_dual_decoder_with_sa/2022_05_02_11_37_36/hparams.yaml'
-    ckpt_path = 'real-logs/unet_dual_decoder_with_sa/2022_05_12_18_26_12/checkpoints/epoch=74-val_f1_score=0.965.ckpt'
+    ckpt_path = '51-logs/unet_dual_decoder_with_sa/2022_05_01_13_05_16/checkpoints/epoch=148-val_f1_score=0.873.ckpt'
     model_weights_path = ''
 
     pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
@@ -211,12 +211,13 @@ if __name__ == '__main__':
 
     # 可视化特征图
     if mode == 0:
-        image_path = 'dataset/rock_aug/rgb/1100_1100ML0048780070500633E01_DXXX.png'
+        image_path = '/home/sges3d/chaohua/oaisys-new/rgb/02600Left.png'
         image_name = image_path.split('/')[-1]
         img = cv2.imread(image_path, 1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        layer = 'decoder2.blocks.4.conv2.2'
+        # layer = 'decoder2.blocks.3.conv2.2'
+        layer = 'sa_blocks.4.norm'
         feature_maps = pr_net.get_feature_maps(input_image=img, layer_name=layer)
         fig = plt.figure(dpi=300, figsize=[16, 12])
         # plt.imshow(feature_maps[0], cmap='jet')

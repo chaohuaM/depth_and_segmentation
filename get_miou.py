@@ -23,7 +23,7 @@ if __name__ == "__main__":
     #   miou_mode为1代表仅仅获得预测结果。
     #   miou_mode为2代表仅仅计算miou。
     # ---------------------------------------------------------------------------#
-    miou_mode = 3
+    miou_mode = 0
     # ------------------------------#
     #   输入预测的图片类型：gray和rgb   #
     # ------------------------------#
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("51-logs/*sa/*/*/*")
+    model_paths = glob.glob("test-logs/*sa/*05_21*/*/*")
     for model_path in model_paths:
         print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = 'dataset/rock_aug/'
+        dataset_dir = 'dataset/oaisys-new/'
         image_dir = os.path.join(dataset_dir, 'rgb')
         gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             print("Get miou done.")
             show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)
 
-        if miou_mode == 3:
+        if miou_mode == 0 or miou_mode == 3:
             layers = ['sa_blocks.0', 'sa_blocks.1', 'sa_blocks.2', 'sa_blocks.3', 'sa_blocks.4']
             pred_dsa_mask_dir = os.path.join(miou_out_path, 'detection-dsa-mask-results')
 

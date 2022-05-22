@@ -27,7 +27,7 @@ def train_model():
                         type=str, help="choose running mode, train or predict")
     parser.add_argument('--log_dir', type=str, help='log save directory', required=False,
                         default='new-logs/')
-    parser.add_argument('--dataset_path', default='dataset/rock_aug/', type=str,
+    parser.add_argument('--dataset_path', default='dataset/oaisys-new/', type=str,
                         help='dataset_path', required=False)
 
     # 系统相关
