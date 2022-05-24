@@ -40,5 +40,7 @@
 #wait
 #python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn ssi_loss --log_dir ./real-logs/ --gpus 1 | tee -a training.log
 #wait
-python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --batch_size 1 --epoch 10 --depth_loss_fn berhu_loss --log_dir ./test-logs/ --gpus 0 | tee -a training.log
+python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn berhu_loss --use_depth_mask 1 --log_dir ./test-logs/ --gpus 1
+wait
+python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn ssi_loss --use_depth_mask 1 --log_dir ./test-logs/ --gpus 1
 wait

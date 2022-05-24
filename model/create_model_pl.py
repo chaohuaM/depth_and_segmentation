@@ -84,7 +84,7 @@ class MyModel(pl.LightningModule):
         else:
             self.depth_loss = None
 
-        self.f1_score = torchmetrics.F1Score(num_classes=num_classes + 1, threshold=0.5)
+        self.f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5, average=None)
         # self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
         self.iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
 
@@ -98,10 +98,6 @@ class MyModel(pl.LightningModule):
         self.logger.log_hyperparams(self.hparams,
                                     {'val_f1_score': 0, 'train_f1_score': 0, 'val_iou': 0, 'train_iou': 0})
 
-        if 'sa' in self.model_name:
-            sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
-            if not os.path.exist(sa_map_dir):
-                os.makedirs(sa_map_dir)
         return super().on_train_start()
 
     def shared_step(self, batch, batch_idx, stage):
@@ -134,19 +130,23 @@ class MyModel(pl.LightningModule):
         total_loss = sem_loss + depth_loss
 
         if 'sa' in self.model_name:
+            sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
+            if not os.path.exists(sa_map_dir):
+                os.makedirs(sa_map_dir)
             if stage == 'val':
                 sa_maps = [x.cpu().numpy() for x in outputs[2]]
-                sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
-                sa_map_npy_path = os.path.join(sa_map_dir, "batch-"+str(batch_idx)+"-epoch-"+str(self.current_epoch)+".npy")
-                sa_npy = np.array(sa_maps)
-                np.save(sa_map_npy_path, sa_npy)
+                sa_map_npy_path = os.path.join(sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
+                    self.current_epoch) + ".npy")
+                np.savez(sa_map_npy_path, *sa_maps)
                 for idx, sa_map in enumerate(sa_maps):
-                    fig = plt.figure()
-                    feature_map = sa_map[0][0]
-                    plt.imshow(feature_map, cmap='jet')
-                    plt.colorbar()
-                    # plt.axis('off')
-                    self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-f-"+str(idx), fig, global_step=self.current_epoch)
+
+                    if batch_idx % 10 == 0:
+                        feature_map = sa_map[0][0]
+                        fig = plt.figure()
+                        plt.imshow(feature_map, cmap='jet')
+                        plt.colorbar()
+                        # plt.axis('off')
+                        self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
 
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))
