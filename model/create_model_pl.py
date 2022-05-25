@@ -97,6 +97,16 @@ class MyModel(pl.LightningModule):
         # log hyperparams
         self.logger.log_hyperparams(self.hparams,
                                     {'val_f1_score': 0, 'train_f1_score': 0, 'val_iou': 0, 'train_iou': 0})
+        if 'sa' in self.model_name:
+            if not os.path.exists(self.sa_map_dir):
+                os.makedirs(self.sa_map_dir)
+
+        return super().on_train_start()
+
+    def on_validation_start(self) -> None:
+        if 'sa' in self.model_name:
+            if not os.path.exists(self.sa_map_dir):
+                os.makedirs(self.sa_map_dir)
 
         return super().on_train_start()
 
@@ -129,24 +139,19 @@ class MyModel(pl.LightningModule):
 
         total_loss = sem_loss + depth_loss
 
-        if 'sa' in self.model_name:
-            sa_map_dir = os.path.join(self.logger.save_dir, 'dsa_map')
-            if not os.path.exists(sa_map_dir):
-                os.makedirs(sa_map_dir)
-            if stage == 'val':
-                sa_maps = [x.cpu().numpy() for x in outputs[2]]
-                sa_map_npy_path = os.path.join(sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
-                    self.current_epoch) + ".npy")
-                np.savez(sa_map_npy_path, *sa_maps)
+        if stage == 'val':
+            sa_maps = [x.cpu().numpy() for x in outputs[2]]
+            sa_map_npy_path = os.path.join(self.sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
+                self.current_epoch) + ".npy")
+            np.savez(sa_map_npy_path, *sa_maps)
+            if batch_idx % 10 == 0:
                 for idx, sa_map in enumerate(sa_maps):
-
-                    if batch_idx % 10 == 0:
-                        feature_map = sa_map[0][0]
-                        fig = plt.figure()
-                        plt.imshow(feature_map, cmap='jet')
-                        plt.colorbar()
-                        # plt.axis('off')
-                        self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
+                    feature_map = sa_map[0][0]
+                    fig = plt.figure()
+                    plt.imshow(feature_map, cmap='jet')
+                    plt.colorbar()
+                    # plt.axis('off')
+                    self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
 
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))
@@ -163,10 +168,9 @@ class MyModel(pl.LightningModule):
         #
         # self.log(f"{stage}_f1_score", self.f1_score, logger=True)
         # self.log(f"{stage}_iou", self.iou, logger=True)
-        #
-        # self.iou.reset()
-        # self.f1_score.reset()
-        pass
+        
+        self.iou.reset()
+        self.f1_score.reset()
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, batch_idx, "train")
@@ -227,6 +231,15 @@ class MyModel(pl.LightningModule):
                             help='learning rate of the optimizer')
 
         return parent_parser
+
+    @property
+    def sa_map_dir(self):
+        save_dir = self.logger.save_dir
+        name = self.logger.name
+        version = self.logger.version
+        sa_map_dir = os.path.join(save_dir + '/' + name + '/' + version, 'dsa_map')
+
+        return sa_map_dir
 
 
 class TransferModelPL(MyModel):
