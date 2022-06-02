@@ -184,23 +184,24 @@ for img_path in glob.glob(label_dir + '*.png'):
 '''
 
 # 测试dataloader函数
-# from torch.utils.data import DataLoader
-# from utils.dataloader import RockDataset, rock_dataset_collate, rock_dataset_collate_pl
-#
-# train_lines = ['1306sensorRight', '4111sensorRight', '0752sensorLeft', '1080sensorLeft',
-#                '3940sensorLeft', '4465sensorRight', '1665sensorRight', '3687sensorLeft',
-#                '2669sensorLeft', '1702sensorLeft', '4359sensorLeft', '4550sensorRight']
-# input_shape = [256, 256]
-# input_channel = 1
-# input_shape.append(input_channel)
-# num_classes = 1
-# data_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
-# train_dataset = RockDataset(train_lines, input_shape, num_classes, True, data_dir)
-# train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, num_workers=4, pin_memory=True,
-#                               drop_last=True)
-#
-# for gen in train_dataloader:
-#     print(gen[0].size())
+from torch.utils.data import DataLoader
+from utils.dataloader import RockDataset, rock_dataset_collate, rock_dataset_collate_pl
+
+with open(os.path.join('/home/ch5225/chaohua/Mars-seg-dataset/MER/', "ImageSets/train.txt"), "r") as f:
+    train_lines = f.readlines()[10:30]
+
+input_shape = [256, 256]
+input_channel = 1
+input_shape.append(input_channel)
+num_classes = 10
+data_dir = '/home/ch5225/chaohua/Mars-seg-dataset/MER/'
+train_dataset = RockDataset(train_lines, input_shape, num_classes, 1, data_dir)
+train_dataloader = DataLoader(train_dataset, shuffle=False, batch_size=2, num_workers=1, pin_memory=True,
+                              drop_last=True)
+
+for gen in train_dataloader:
+    a = gen[1].squeeze(1)
+    # g = F.one_hot(gen[1].long().view(-1), num_classes=num_classes)
 
 # 测试pytorch-lightning 方式训练
 import pytorch_lightning as pl

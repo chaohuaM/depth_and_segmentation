@@ -12,8 +12,7 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 from model.unet_dual_decoder import unet_dual_decoder, unet_dual_decoder_with_sa
 
-from losses.depth_losses import BerHu_Loss
-from losses.ssi_loss import ScaleAndShiftInvariantLoss
+from losses.depth_losses import ScaleAndShiftInvariantLoss, BerHuLoss
 from utils.utils_metrics import binary_mean_iou
 import torchmetrics
 
@@ -78,7 +77,7 @@ class MyModel(pl.LightningModule):
 
         if self.model_name in ['unet_dual_decoder', 'unet_dual_decoder_with_sa']:
             if self.depth_loss_fn == 'berhu_loss':
-                self.depth_loss = BerHu_Loss
+                self.depth_loss = BerHuLoss()
             elif self.depth_loss_fn == 'ssi_loss':
                 self.depth_loss = ScaleAndShiftInvariantLoss()
         else:

@@ -81,9 +81,12 @@ class RockDataset(Dataset):
         self.dataset_path = dataset_path
         # self.image_level_transform = True
         self.color_jitter = True
-        self.img_dir = os.path.join(self.dataset_path, 'rgb')
-        self.label_dir = os.path.join(self.dataset_path, 'semantic_01_label')
-        self.depth_dir = os.path.join(self.dataset_path, 'inv-depth-01-npy')
+        self.img_dir = os.path.join(self.dataset_path, 'image')
+        self.img_suffix = "." + os.listdir(self.img_dir)[0].split('.')[-1]
+        self.label_dir = os.path.join(self.dataset_path, 'label')
+        self.label_suffix = "." + os.listdir(self.label_dir)[0].split('.')[-1]
+        self.depth_dir = os.path.join(self.dataset_path, 'inv-depth-npy')
+        self.depth_suffix = "." + os.listdir(self.depth_dir)[0].split('.')[-1]
 
     def __len__(self):
         return self.length
@@ -105,10 +108,10 @@ class RockDataset(Dataset):
         标签路径     数据集文件夹/semantic_01_label/*.png
         深度图路径    数据集文件夹/depth/*_pinhole_depth_*.exr
         '''
-        img_path = os.path.join(self.img_dir, name + ".png")
-        label_path = os.path.join(self.label_dir, name + ".png")
+        img_path = os.path.join(self.img_dir, name + self.img_suffix)
+        label_path = os.path.join(self.label_dir, name + self.label_suffix)
         # 最好使用逆深度，而且进行归一化『0，1』
-        depth_img_path = os.path.join(self.depth_dir, name + ".npy")
+        depth_img_path = os.path.join(self.depth_dir, name + self.depth_suffix)
 
         # 以50%概率读取成灰度图 再转换成rgb，只有亮度信息
         if self.input_shape[2] == 1 or (self.transform and rand() < 0.5):

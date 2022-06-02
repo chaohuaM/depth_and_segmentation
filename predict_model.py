@@ -107,7 +107,11 @@ class PredictModel(object):
             seg_output = outputs[0]
 
             pr_seg = seg_output[0]
-            pr_seg = torch.gt(pr_seg.permute(1, 2, 0), 0.5).byte().cpu().numpy()
+            c, _, _ = pr_seg.size()
+            if c > 1:
+                pr_seg = torch.argmax(pr_seg, dim=0).unsqueeze(-1).byte().cpu().numpy()
+            else:
+                pr_seg = torch.gt(pr_seg.permute(1, 2, 0), 0.5).byte().cpu().numpy()
             pr_seg = resize_and_centered(pr_seg, (original_h, original_w), reverse=True)
 
             pr_result = [pr_seg]

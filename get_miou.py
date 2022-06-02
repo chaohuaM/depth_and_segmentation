@@ -29,19 +29,29 @@ if __name__ == "__main__":
     #   输入预测的图片类型：gray和rgb   #
     # ------------------------------#
     input_type = 'rgb'
-    # ------------------------------#
-    #   分类个数+1、如2+1
-    # ------------------------------#
-    num_classes = 2
     # --------------------------------------------#
+    #   分类个数+1、如2+1
     #   区分的种类，和json_to_dataset里面的一样
     # --------------------------------------------#
+    num_classes = 2
     name_classes = ["Non-rock", "Rock"]
-    # -------------------------------------------------------#
+
+    # num_classes = 10
+    # name_classes = ['_background_',
+    #                 'Martian Soil',
+    #                 'Sands',
+    #                 'Gravel',
+    #                 'Bedrock',
+    #                 'Rocks',
+    #                 'Tracks',
+    #                 'Shadows',
+    #                 'unknown',
+    #                 'bkg']
+    # --------------------------------------------#
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("525-logs/*sa/*06_01*/checkpoints/*")
+    model_paths = glob.glob("test-logs/*sa/*05_21*/*/*")
     for model_path in model_paths:
         print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
@@ -55,9 +65,10 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = 'dataset/oaisys-new/'
-        image_dir = os.path.join(dataset_dir, 'rgb')
-        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
+        dataset_dir = 'dataset/MER/'
+        image_dir = os.path.join(dataset_dir, 'image')
+        image_suffix = '.' + os.listdir(image_dir)[0].split('.')[-1]
+        gt_dir = os.path.join(dataset_dir, "label")
 
         # 输出路径设置
         miou_out_path = dataset_dir + log_path + '/val'
@@ -91,7 +102,7 @@ if __name__ == "__main__":
 
             print("Get predict result.")
             for image_id in tqdm(image_ids):
-                image_path = os.path.join(image_dir, image_id + '.png')
+                image_path = os.path.join(image_dir, image_id + image_suffix)
                 if input_type == 'rgb':
                     img = cv2.imread(image_path, 1)
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -143,7 +154,7 @@ if __name__ == "__main__":
                 else:
                     img = cv2.imread(image_path, 0)
                     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-                
+
                 dsa_masks = pr_net.get_dsa_mask(input_image=img)
                 for idx in range(len(layers)):
                     layer = layers[idx]
