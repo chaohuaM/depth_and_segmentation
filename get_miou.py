@@ -1,4 +1,5 @@
 import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import yaml
 import glob
 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("test-logs/*sa/*05_21*/*/*")
+    model_paths = glob.glob("525-logs/*sa/*06_01*/checkpoints/*")
     for model_path in model_paths:
         print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
         # 输出路径设置
-        miou_out_path = dataset_dir + log_path
+        miou_out_path = dataset_dir + log_path + '/val'
         pred_dir = os.path.join(miou_out_path, 'detection-results')
 
         # 有val.txt的时候
@@ -76,13 +77,14 @@ if __name__ == "__main__":
                 os.makedirs(pred_dir)
 
             pred_col_dir = os.path.join(miou_out_path, 'detection-col-results')
-            pred_depth_dir = os.path.join(miou_out_path, 'detection-depth-results')
 
             if not os.path.exists(pred_col_dir):
                 os.makedirs(pred_col_dir)
 
-            if not os.path.exists(pred_depth_dir):
-                os.makedirs(pred_depth_dir)
+            if 'dual_decoder' in model_name:
+                pred_depth_dir = os.path.join(miou_out_path, 'detection-depth-results')
+                if not os.path.exists(pred_depth_dir):
+                    os.makedirs(pred_depth_dir)
 
             pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
             print("Load model done.")
@@ -122,7 +124,7 @@ if __name__ == "__main__":
             print("Get miou done.")
             show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)
 
-        if miou_mode == 0 or miou_mode == 3:
+        if 'sa' in model_name and miou_mode == 3:
             layers = ['sa_blocks.0', 'sa_blocks.1', 'sa_blocks.2', 'sa_blocks.3', 'sa_blocks.4']
             pred_dsa_mask_dir = os.path.join(miou_out_path, 'detection-dsa-mask-results')
 

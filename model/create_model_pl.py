@@ -140,18 +140,19 @@ class MyModel(pl.LightningModule):
         total_loss = sem_loss + depth_loss
 
         if stage == 'val':
-            sa_maps = [x.cpu().numpy() for x in outputs[2]]
-            sa_map_npy_path = os.path.join(self.sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
-                self.current_epoch) + ".npy")
-            np.savez(sa_map_npy_path, *sa_maps)
-            if batch_idx % 10 == 0:
-                for idx, sa_map in enumerate(sa_maps):
-                    feature_map = sa_map[0][0]
-                    fig = plt.figure()
-                    plt.imshow(feature_map, cmap='jet')
-                    plt.colorbar()
-                    # plt.axis('off')
-                    self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
+            if 'sa' in self.model_name:
+                sa_maps = [x.cpu().numpy() for x in outputs[2]]
+                sa_map_npy_path = os.path.join(self.sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
+                    self.current_epoch) + ".npy")
+                np.savez(sa_map_npy_path, *sa_maps)
+                if batch_idx % 10 == 0:
+                    for idx, sa_map in enumerate(sa_maps):
+                        feature_map = sa_map[0][0]
+                        fig = plt.figure()
+                        plt.imshow(feature_map, cmap='jet')
+                        plt.colorbar()
+                        # plt.axis('off')
+                        self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
 
         self.f1_score(sem_outputs.view(-1), masks.view(-1))
         self.iou(sem_outputs.view(-1), masks.view(-1))

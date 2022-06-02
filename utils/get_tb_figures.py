@@ -39,8 +39,8 @@ def fig2data(fig):
     return image
 
 
-event_filename = '../test-logs/unet_dual_decoder_with_sa/2022_05_20_01_43_19/events.out.tfevents.1652982203.ch5225.5274.0'
-out_dir = '../dataset/rockA+B/dsa-map/'
+event_filename = '../test-logs/unet_dual_decoder_with_sa/2022_05_20_19_38_14/events.out.tfevents.1653046699.sges3d-station.387299.0'
+out_dir = '../dataset/oaisys-new/test-logs/unet_dual_decoder_with_sa/2022_05_20_19_38_14/dsa-map/'
 image_tags = ['1sa-map-0', '1sa-map-1', '1sa-map-2', '1sa-map-3', '1sa-map-4']
 
 if not os.path.exists(out_dir):

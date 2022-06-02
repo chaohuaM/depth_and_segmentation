@@ -13,10 +13,13 @@ from segmentation_models_pytorch.decoders.unet.decoder import CenterBlock
 
 
 class SpatialAttentionModule(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, bn_affine=True, bn_running_stats=True):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, 1, 1)
-        self.bn = nn.BatchNorm2d(1)
+        # 直接使用，保留可学习的参数
+        # self.bn = nn.BatchNorm2d(1)
+        # 将bn层作为z-score工具，没有参数
+        self.bn = nn.BatchNorm2d(1, affine=bn_affine, track_running_stats=bn_running_stats)
         self.norm = nn.Sigmoid()
 
     def forward(self, inputs):

@@ -65,6 +65,18 @@ def mse_loss(prediction, target, mask, reduction=reduction_batch_based):
     return reduction(image_loss, 2 * M)
 
 
+def berhu_loss(predict, target, mask=None):
+    M = torch.sum(mask, (1, 2))
+    x = predict - target
+    abs_x = torch.abs(x)
+    c = torch.max(abs_x).item() / 5.0
+    leq = (abs_x <= c).float()
+    l2_losses = (x ** 2 + c ** 2) / (2 * c)
+    losses = leq * abs_x + (1 - leq) * l2_losses
+    losses, count = _mask_input(losses, mask)
+    return torch.sum(losses) / count
+
+
 def gradient_loss(prediction, target, mask, reduction=reduction_batch_based):
 
     M = torch.sum(mask, (1, 2))
@@ -153,18 +165,55 @@ class ScaleAndShiftInvariantLoss(nn.Module):
     prediction_ssi = property(__get_prediction_ssi)
 
 
+class BerHuLoss(nn.Module):
+    def __init__(self, alpha=0.5, scales=4, reduction='batch-based'):
+        super().__init__()
+
+        self.__data_loss = MSELoss(reduction=reduction)
+        self.__regularization_loss = GradientLoss(scales=scales, reduction=reduction)
+        self.__alpha = alpha
+
+        self.__prediction_ssi = None
+
+    def forward(self, prediction, target, mask):
+        """
+        :param prediction:  N ( x C) x H x W
+        :param target:      N ( x C) x H x W
+        :param mask:        N ( x C) x H x W
+        :return:
+        """
+        scale, shift = compute_scale_and_shift(prediction, target, mask)
+        self.__prediction_ssi = scale.view(-1, 1, 1) * prediction + shift.view(-1, 1, 1)
+
+        total = self.__data_loss(self.__prediction_ssi, target, mask)
+        if self.__alpha > 0:
+            total += self.__alpha * self.__regularization_loss(self.__prediction_ssi, target, mask)
+
+        return total
+
+    def __get_prediction_ssi(self):
+        return self.__prediction_ssi
+
 if __name__ == '__main__':
     ssi_loss = ScaleAndShiftInvariantLoss()
 
     import numpy as np
-    target1 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy/00030Left.npy')
+    target1 = np.load('../dataset/oaisys-new/inv-depth-01-npy/00039Left.npy')
+    target2 = np.load('../dataset/oaisys-new/inv-depth-01-npy/00055Left.npy')
     # target2 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy/00035Left.npy')
     # target = [target1, target2]
-    target = torch.tensor([target1])
+    target = torch.tensor([target1, target2])
 
-    predict = torch.rand_like(target)
+    predict = torch.randn_like(target)
+    predict = target - 0.001
 
     mask = torch.zeros_like(target)
     mask[torch.where(target > 0)] = 1
+    mask = torch.ones_like(target)
 
     loss = ssi_loss(predict, target, mask)
+
+    from losses.depth_losses import BerHu_Loss
+    berhu_loss = BerHu_Loss
+
+    loss1 = berhu_loss(predict, target, mask)

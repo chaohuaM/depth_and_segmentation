@@ -40,7 +40,21 @@
 #wait
 #python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn ssi_loss --log_dir ./real-logs/ --gpus 1 | tee -a training.log
 #wait
-python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn berhu_loss --use_depth_mask 1 --log_dir ./test-logs/ --gpus 1
+#python -u train_model_pl.py --model_name unet --in_channels 3 --gpu_bs 8 --epoch 100 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+#python -u train_model_pl.py --model_name unet_dual_decoder --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn berhu_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+#python -u train_model_pl.py --model_name unet_dual_decoder --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn ssi_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+#python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn berhu_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+#python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn ssi_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --lr 0.1 --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn ssi_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 1 | tee -a training.log
 wait
-python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn ssi_loss --use_depth_mask 1 --log_dir ./test-logs/ --gpus 1
+python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --lr 0.1 --in_channels 3 --gpu_bs 8 --epoch 100 --depth_loss_fn ssi_loss --use_depth_mask 1 --log_dir ./525-logs/ --gpus 1 | tee -a training.log
+wait
+#python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --lr 0.00001 --in_channels 3 --gpu_bs 8 --epoch 150 --depth_loss_fn ssi_loss --use_depth_mask 1 --log_dir ./525-logs/ --gpus 0 | tee -a training.log
+#wait
+python -u train_model_pl.py --model_name unet_dual_decoder_with_sa --lr 0.1 --in_channels 3 --gpu_bs 8 --epoch 200 --depth_loss_fn ssi_loss --use_depth_mask 0 --log_dir ./525-logs/ --gpus 1 | tee -a training.log
 wait

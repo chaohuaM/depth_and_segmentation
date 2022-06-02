@@ -6,6 +6,7 @@ import os
 import torch.optim as optim
 import glob
 from predict_model import blend_image, PredictModel
+from PIL import Image
 
 
 def normalization(data):
@@ -69,6 +70,30 @@ def visualize(image, mask, original_image=None, original_mask=None):
         ax[1, 1].set_title('Transformed mask', fontsize=fontsize)
 
 
+def fig2data(fig):
+    """
+    # @Author : panjq
+    # @E-mail : pan_jinquan@163.com
+    fig = plt.figure()
+    image = fig2data(fig)
+    @brief Convert a Matplotlib figure to a 4D numpy array with RGBA channels and return it
+    @param fig a matplotlib figure
+    @return a numpy 3D array of RGBA values
+    """
+    # draw the renderer
+    fig.canvas.draw()
+
+    # Get the RGBA buffer from the figure
+    w, h = fig.canvas.get_width_height()
+    buf = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+    buf.shape = (w, h, 4)
+
+    # canvas.tostring_argb give pixmap in ARGB mode. Roll the ALPHA channel to have it in RGBA mode
+    buf = np.roll(buf, 3, axis=2)
+    image = Image.frombytes("RGBA", (w, h), buf.tobytes())
+    image = np.asarray(image)
+    return image
+
 # # 转换深度图
 # file_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
 #
@@ -113,7 +138,7 @@ def visualize(image, mask, original_image=None, original_mask=None):
 #     if count % 100 == 0:
 #         print(count)
 
-
+'''
 # 将标签中的rgb值转为为0和1
 img_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/JPEGImages'
 label_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/SegmentationClassPNG/'
@@ -156,7 +181,7 @@ for img_path in glob.glob(label_dir + '*.png'):
     if 5 in np.unique(label):
         with open(rock_txt_path, 'a') as f:
             f.write(img_name.replace('.png', '\n'))
-
+'''
 
 # 测试dataloader函数
 # from torch.utils.data import DataLoader
@@ -863,3 +888,38 @@ for count in range(len(train_lines)):
     if count % 10 == 0:
         print(count)
 '''
+# 读取.npy 生成特征图
+import imageio
+
+dsa_map_dir = '525-logs/unet_dual_decoder_with_sa/2022_05_31_22_57_19/dsa_map'
+
+
+epoch = 100
+batch_id = 1
+arr_list = ['arr_0', 'arr_1', 'arr_2', 'arr_3', 'arr_4']
+in_batch_id = 6
+
+out_dir = os.path.join(dsa_map_dir, str(batch_id)+'-'+str(in_batch_id))
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir)
+
+for arr_name in arr_list:
+    ims = []
+    for e in range(epoch):
+        file_tag = 'batch-' + str(batch_id) + '-epoch-' + str(e)
+        file_name = file_tag + '.npy.npz'
+        dsa_maps = np.load(os.path.join(dsa_map_dir, file_name))
+        dsa_mask = dsa_maps[arr_name][in_batch_id]
+        dsa_mask = dsa_mask.squeeze(0)
+        fig = plt.figure()
+        plt.imshow(dsa_mask, cmap='jet')
+        plt.title('dsa-'+arr_name[-1]+'  epoch: ' + str(e))
+        plt.colorbar()
+        plt.savefig(os.path.join(out_dir, file_tag+"-" + ".png"))
+        plt.close()
+
+        im = fig2data(fig)
+        ims.append(im)
+
+    imageio.mimsave(os.path.join(out_dir, 'batch-'+str(batch_id)+'-dsa-'+arr_name[-1]+".gif"), ims, fps=10)
+    print('batch-'+str(batch_id)+'-dsa-'+arr_name[-1] + '.gif saved!')
