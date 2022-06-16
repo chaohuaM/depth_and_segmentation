@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
 
-from utils.utils import preprocess_input, load_exr, resize_and_centered, paste_image
+from utils.utils import preprocess_input, normalization, resize_and_centered, paste_image
 
 
 def rand(a=0, b=1):
@@ -81,9 +81,9 @@ class RockDataset(Dataset):
         self.dataset_path = dataset_path
         # self.image_level_transform = True
         self.color_jitter = True
-        self.img_dir = os.path.join(self.dataset_path, 'image')
+        self.img_dir = os.path.join(self.dataset_path, 'rgb')
         self.img_suffix = "." + os.listdir(self.img_dir)[0].split('.')[-1]
-        self.label_dir = os.path.join(self.dataset_path, 'label')
+        self.label_dir = os.path.join(self.dataset_path, 'semantic_01_label')
         self.label_suffix = "." + os.listdir(self.label_dir)[0].split('.')[-1]
         self.depth_dir = os.path.join(self.dataset_path, 'inv-depth-npy')
         self.depth_suffix = "." + os.listdir(self.depth_dir)[0].split('.')[-1]
@@ -123,6 +123,7 @@ class RockDataset(Dataset):
 
         y_label = cv2.imread(label_path, 0)
         depth_img = np.load(depth_img_path)
+        depth_img = normalization(depth_img)
         # -------------------------------#
         #   数据增强
         # -------------------------------#

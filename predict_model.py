@@ -1,5 +1,6 @@
 import math
-
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import yaml
 import torch
@@ -202,8 +203,8 @@ def create_predict_model(model_weights_path, config_path):
 
 
 if __name__ == '__main__':
-    config_path = '51-logs/unet_dual_decoder_with_sa/2022_05_02_11_37_36/hparams.yaml'
-    ckpt_path = '51-logs/unet_dual_decoder_with_sa/2022_05_01_13_05_16/checkpoints/epoch=148-val_f1_score=0.873.ckpt'
+    config_path = '525-logs/unet_dual_decoder_with_sa/2022_06_06_11_19_21/hparams.yaml'
+    ckpt_path = '525-logs/unet_dual_decoder_with_sa/2022_06_06_11_19_21/checkpoints/epoch=96-val_f1_score=0.938.ckpt'
     model_weights_path = ''
 
     pr_net = create_predict_model_pl(checkpoint_path=ckpt_path, config_path=config_path)
@@ -211,7 +212,7 @@ if __name__ == '__main__':
     # -------------模式选择----------------- #
     #       0可以保存特征图，1表示直接预测       #
     # ------------------------------------ #
-    mode = 0
+    mode = 1
 
     # 可视化特征图
     if mode == 0:
@@ -266,7 +267,7 @@ if __name__ == '__main__':
             cv2.imwrite('predicted_seg.png', cv2.cvtColor(col_seg, cv2.COLOR_RGBA2BGR))
 
             if len(pr_outputs) > 1:
-                pr_depth = pr_outputs[1][:, :500]
+                pr_depth = pr_outputs[1]
                 col_depth = show_depth(pr_depth)
                 cv2.imwrite('predicted_depth.png', col_depth)
 

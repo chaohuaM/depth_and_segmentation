@@ -193,7 +193,7 @@ if __name__ == '__main__':
     from torchsummary import summary
 
     x = torch.zeros(2, 3, 512, 512)
-    net = unet_dual_decoder_with_sa()
+    net = unet_dual_decoder_with_sa(encoder_name='resnet50')
     net.eval()
     o1, o2, sa_maps = net(x)
     print(o1.shape)

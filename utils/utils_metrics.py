@@ -77,6 +77,10 @@ def per_Accuracy(hist):
     return np.sum(np.diag(hist)) / np.maximum(np.sum(hist), 1)
 
 
+def per_class_Fscore(precisons, recalls):
+    return 2 * precisons * recalls / (precisons + recalls)
+
+
 def compute_mIoU(gt_dir, pred_dir, png_name_list, num_classes, name_classes):
     print('Num classes', num_classes)
     # -----------------------------------------#
@@ -116,36 +120,39 @@ def compute_mIoU(gt_dir, pred_dir, png_name_list, num_classes, name_classes):
         #   对一张图片计算21×21的hist矩阵，并累加
         # ------------------------------------------------#
         hist += fast_hist(label.flatten(), pred.flatten(), num_classes)
-        # 每计算10张就输出一下目前已计算的图片中所有类别平均的mIoU值
-        if ind > 0 and ind % 10 == 0:
-            print('{:d} / {:d}: mIou-{:0.2f}%; mPA-{:0.2f}%; Accuracy-{:0.2f}%'.format(
-                ind,
-                len(gt_imgs),
-                100 * np.nanmean(per_class_iu(hist)),
-                100 * np.nanmean(per_class_PA_Recall(hist)),
-                100 * per_Accuracy(hist)
-            )
-            )
+        # # 每计算10张就输出一下目前已计算的图片中所有类别平均的mIoU值
+        # if ind > 0 and ind % 10 == 0:
+        #     print('{:d} / {:d}: mIou-{:0.2f}%; mPA-{:0.2f}%; Accuracy-{:0.2f}%'.format(
+        #         ind,
+        #         len(gt_imgs),
+        #         100 * np.nanmean(per_class_iu(hist)),
+        #         100 * np.nanmean(per_class_PA_Recall(hist)),
+        #         100 * per_Accuracy(hist)
+        #     )
+        #     )
     # ------------------------------------------------#
     #   计算所有验证集图片的逐类别mIoU值
     # ------------------------------------------------#
     IoUs = per_class_iu(hist)
     PA_Recall = per_class_PA_Recall(hist)
     Precision = per_class_Precision(hist)
+    Fscore = per_class_Fscore(Precision, PA_Recall)
     # ------------------------------------------------#
     #   逐类别输出一下mIoU值
     # ------------------------------------------------#
     for ind_class in range(num_classes):
-        print('===>' + name_classes[ind_class] + ':\tIou-' + str(round(IoUs[ind_class] * 100, 2)) \
-              + '; Recall (equal to the PA)-' + str(round(PA_Recall[ind_class] * 100, 2)) + '; Precision-' + str(
-            round(Precision[ind_class] * 100, 2)))
+        print('===>' + name_classes[ind_class] +
+              ':\tIou-' + str(round(IoUs[ind_class] * 100, 2)) +
+              '; Recall (equal to the PA)-' + str(round(PA_Recall[ind_class] * 100, 2)) +
+              '; Precision-' + str(round(Precision[ind_class] * 100, 2)) +
+              '；F-score-' + str(round(Fscore[ind_class] * 100, 2)))
 
     # -----------------------------------------------------------------#
     #   在所有验证集图像上求所有类别平均的mIoU值，计算时忽略NaN值
     # -----------------------------------------------------------------#
     print('===> mIoU: ' + str(round(np.nanmean(IoUs) * 100, 2)) + '; mPA: ' + str(
         round(np.nanmean(PA_Recall) * 100, 2)) + '; Accuracy: ' + str(round(per_Accuracy(hist) * 100, 2)))
-    return np.array(hist, np.int), IoUs, PA_Recall, Precision
+    return np.array(hist, np.int), IoUs, PA_Recall, Precision, Fscore
 
 
 def adjust_axes(r, t, fig, axes):
@@ -181,22 +188,22 @@ def draw_plot_func(values, name_classes, plot_title, x_label, output_path, tick_
     plt.close()
 
 
-def show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes, tick_font_size=12):
+def show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, Fscore, name_classes, tick_font_size=12):
     draw_plot_func(IoUs, name_classes, "mIoU = {0:.2f}%".format(np.nanmean(IoUs) * 100), "Intersection over Union", \
                    os.path.join(miou_out_path, "mIoU.png"), tick_font_size=tick_font_size, plt_show=False)
-    print("Save mIoU out to " + os.path.join(miou_out_path, "mIoU.png"))
+    # print("Save mIoU out to " + os.path.join(miou_out_path, "mIoU.png"))
 
     draw_plot_func(PA_Recall, name_classes, "mPA = {0:.2f}%".format(np.nanmean(PA_Recall) * 100), "Pixel Accuracy", \
                    os.path.join(miou_out_path, "mPA.png"), tick_font_size=tick_font_size, plt_show=False)
-    print("Save mPA out to " + os.path.join(miou_out_path, "mPA.png"))
+    # print("Save mPA out to " + os.path.join(miou_out_path, "mPA.png"))
 
     draw_plot_func(PA_Recall, name_classes, "mRecall = {0:.2f}%".format(np.nanmean(PA_Recall) * 100), "Recall", \
                    os.path.join(miou_out_path, "Recall.png"), tick_font_size=tick_font_size, plt_show=False)
-    print("Save Recall out to " + os.path.join(miou_out_path, "Recall.png"))
+    # print("Save Recall out to " + os.path.join(miou_out_path, "Recall.png"))
 
     draw_plot_func(Precision, name_classes, "mPrecision = {0:.2f}%".format(np.nanmean(Precision) * 100), "Precision", \
                    os.path.join(miou_out_path, "Precision.png"), tick_font_size=tick_font_size, plt_show=False)
-    print("Save Precision out to " + os.path.join(miou_out_path, "Precision.png"))
+    # print("Save Precision out to " + os.path.join(miou_out_path, "Precision.png"))
 
     with open(os.path.join(miou_out_path, "confusion_matrix.csv"), 'w', newline='') as f:
         writer = csv.writer(f)
@@ -204,4 +211,11 @@ def show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes, 
         for i in range(len(hist)):
             writer_list.append([name_classes[i]] + [str(x) for x in hist[i]])
         writer.writerows(writer_list)
-    print("Save confusion_matrix out to " + os.path.join(miou_out_path, "confusion_matrix.csv"))
+    # print("Save confusion_matrix out to " + os.path.join(miou_out_path, "confusion_matrix.csv"))
+
+    with open(os.path.join(miou_out_path, "evaluation_metrics.txt"), 'w', newline='') as f1:
+        f1.write("class\tPrecison\tRecall\tIou\tF-score\n")
+        for i in range(len(name_classes)):
+            value = name_classes[i] + "\t" + str(Precision[i]) + "\t" + str(PA_Recall[i]) + "\t" + str(IoUs[i]) + "\t" + str(Fscore[i])
+            f1.write(value+'\n')
+    # print("Save evaluation_metrics out to " + os.path.join(miou_out_path, "evaluation_metrics.csv"))

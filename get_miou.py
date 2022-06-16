@@ -51,7 +51,7 @@ if __name__ == "__main__":
     #   指向数据集所在的文件夹
     #   数据集路径
     # -------------------------------------------------------#
-    model_paths = glob.glob("test-logs/*sa/*05_21*/*/*")
+    model_paths = glob.glob("MSL-aug-logs/*/*06_16*/checkpoints/*")
     for model_path in model_paths:
         print("model path:", model_path)
         log_path = '/'.join(model_path.split('/')[:-2]) + '/' + model_path.split("/")[-1][:-5]
@@ -65,10 +65,10 @@ if __name__ == "__main__":
         backbone = config_params['backbone']
         in_channels = config_params['in_channels']
 
-        dataset_dir = 'dataset/MER/'
-        image_dir = os.path.join(dataset_dir, 'image')
+        dataset_dir = 'dataset/MSL/aug_data/'
+        image_dir = os.path.join(dataset_dir, 'rgb')
         image_suffix = '.' + os.listdir(image_dir)[0].split('.')[-1]
-        gt_dir = os.path.join(dataset_dir, "label")
+        gt_dir = os.path.join(dataset_dir, "semantic_01_label")
 
         # 输出路径设置
         miou_out_path = dataset_dir + log_path + '/val'
@@ -130,10 +130,10 @@ if __name__ == "__main__":
         # 计算精度指标
         if miou_mode == 0 or miou_mode == 2:
             print("Get miou.")
-            hist, IoUs, PA_Recall, Precision = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes,
+            hist, IoUs, PA_Recall, Precision, Fscore = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes,
                                                             name_classes)  # 执行计算mIoU的函数
             print("Get miou done.")
-            show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, name_classes)
+            show_results(miou_out_path, hist, IoUs, PA_Recall, Precision, Fscore, name_classes)
 
         if 'sa' in model_name and miou_mode == 3:
             layers = ['sa_blocks.0', 'sa_blocks.1', 'sa_blocks.2', 'sa_blocks.3', 'sa_blocks.4']

@@ -9,6 +9,8 @@ import torch.nn as nn
 import torch
 import torch.nn as nn
 
+from losses.AutomaticWeightedLoss import AutomaticWeightedLoss
+
 
 def compute_scale_and_shift(prediction, target, mask):
     # system matrix: A = [[a_00, a_01], [a_10, a_11]]
@@ -136,9 +138,10 @@ class ScaleAndShiftInvariantLoss(nn.Module):
     def __init__(self, alpha=0.5, scales=4, reduction='batch-based'):
         super().__init__()
 
-        self.__data_loss = MSELoss(reduction=reduction)
-        self.__regularization_loss = GradientLoss(scales=scales, reduction=reduction)
-        self.__alpha = alpha
+        self.data_loss = MSELoss(reduction=reduction)
+        self.regularization_loss = GradientLoss(scales=scales, reduction=reduction)
+        self.alpha = alpha
+        self.awl = AutomaticWeightedLoss(2)
 
         self.__prediction_ssi = None
 
@@ -152,9 +155,13 @@ class ScaleAndShiftInvariantLoss(nn.Module):
         scale, shift = compute_scale_and_shift(prediction, target, mask)
         self.__prediction_ssi = scale.view(-1, 1, 1) * prediction + shift.view(-1, 1, 1)
 
-        total = self.__data_loss(self.__prediction_ssi, target, mask)
-        if self.__alpha > 0:
-            total += self.__alpha * self.__regularization_loss(self.__prediction_ssi, target, mask)
+        # total = self.__data_loss(self.__prediction_ssi, target, mask)
+        # if self.__alpha > 0:
+        #     total += self.__alpha * self.__regularization_loss(self.__prediction_ssi, target, mask)
+
+        data_loss = self.data_loss(self.__prediction_ssi, target, mask)
+        regularization_loss = self.regularization_loss(self.__prediction_ssi, target, mask)
+        total = self.awl(data_loss, regularization_loss)
 
         return total
 
@@ -168,9 +175,10 @@ class BerHuLoss(nn.Module):
     def __init__(self, alpha=0.5, scales=4, reduction='batch-based'):
         super().__init__()
 
-        self.__data_loss = berhu_loss
-        self.__regularization_loss = GradientLoss(scales=scales, reduction=reduction)
-        self.__alpha = alpha
+        self.data_loss = berhu_loss
+        self.regularization_loss = GradientLoss(scales=scales, reduction=reduction)
+        self.alpha = alpha
+        self.awl = AutomaticWeightedLoss(2)
 
     def forward(self, prediction, target, mask):
         """
@@ -179,36 +187,48 @@ class BerHuLoss(nn.Module):
         :param mask:        N ( x C) x H x W
         :return:
         """
-        total = self.__data_loss(prediction, target, mask)
-        if self.__alpha > 0:
-            total += self.__alpha * self.__regularization_loss(prediction, target, mask)
+        # total = self.__data_loss(prediction, target, mask)
+        # if self.__alpha > 0:
+        #     total += self.__alpha * self.__regularization_loss(prediction, target, mask)
+
+        data_loss = self.data_loss(prediction, target, mask)
+        regularization_loss = self.regularization_loss(prediction, target, mask)
+        total = self.awl(data_loss, regularization_loss)
 
         return total
 
 
 if __name__ == '__main__':
-    ssi_loss = ScaleAndShiftInvariantLoss()
-    berhu_loss1 = BerHuLoss()
+
+    grad_smooth_factor0 = 0.0
+    grad_smooth_factor1 = 1.0
+    ssi_loss0 = ScaleAndShiftInvariantLoss(alpha=grad_smooth_factor0)
+    ssi_loss1 = ScaleAndShiftInvariantLoss(alpha=grad_smooth_factor1)
+    berhu_loss0 = BerHuLoss(alpha=grad_smooth_factor0)
+    berhu_loss1 = BerHuLoss(alpha=grad_smooth_factor1)
 
     import numpy as np
-    target1 = np.load('../dataset/oaisys-new/depth_npy/00039Left.npy')
-    target2 = np.load('../dataset/oaisys-new/depth_npy/00055Left.npy')
+    target1 = np.load('../dataset/oaisys-new/inv-depth-01-npy/00123Left.npy')
+    target2 = np.load('../dataset/oaisys-new/inv-depth-01-npy/00055Left.npy')
     # target2 = np.load('/home/ch5225/Desktop/模拟数据/oaisys-new/depth_npy/00035Left.npy')
     # target = [target1, target2]
     target = torch.tensor([target1, target2])
 
-    predict = torch.randn_like(target)
-    # predict = target - 0.001
+    torch.manual_seed(2022)
+    # predict = torch.randn_like(target)
+    predict = target - torch.rand_like(target)
 
     mask = torch.zeros_like(target)
     mask[torch.where(target > 0)] = 1
-    # mask = torch.ones_like(target)
 
-    loss = ssi_loss(predict, target, mask)
+    mask = torch.ones_like(target)
 
-    from losses.depth_loss_function import BerHu_Loss
-    berhu_loss2 = BerHu_Loss
+    loss1 = ssi_loss0(predict, target, mask=mask)
 
-    loss1 = berhu_loss1(predict, target, mask)
+    loss2 = ssi_loss1(predict, target, mask=mask)
 
-    loss2 = berhu_loss2(predict, target, mask)
+    loss3 = berhu_loss0(predict, target, mask=mask)
+
+    loss4 = berhu_loss1(predict, target, mask=mask)
+
+    param = berhu_loss1.awl.params[0].item()

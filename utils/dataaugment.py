@@ -11,8 +11,9 @@ import cv2
 def save_png(img_path, data):
     cv2.imwrite(img_path, data)
 
+
 transform = A.Compose([
-    A.RandomSizedCrop(min_max_height=(250, 500), height=512, width=512),
+    A.RandomSizedCrop(min_max_height=(300, 500), height=512, width=512),
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.OneOf([
@@ -20,24 +21,26 @@ transform = A.Compose([
         A.MedianBlur(blur_limit=3, p=0.1),  # 中值滤波
         A.Blur(blur_limit=3, p=0.1),  # 使用随机大小的内核模糊输入图像。
     ], p=0.9),
-    A.ShiftScaleRotate(border_mode=0),
+    # A.ShiftScaleRotate(border_mode=0),
     # 随机应用仿射变换：平移，缩放和旋转输入
     A.RandomBrightnessContrast(p=0.5),  # 随机明亮对比度
-    A.ColorJitter(p=0.5),
+    # A.ColorJitter(p=0.2),
     A.RandomGamma(p=0.5),
 ])
 
-dataset_path = '/home/ch5225/chaohua/MarsData/Data/rockA+B'
+dataset_path = '../dataset/MSL'
 save_dir = os.path.join(dataset_path, 'aug_data')
 
 image_dirname = 'rgb'
 img_dir = os.path.join(dataset_path, image_dirname)
 img_suffix = "." + os.listdir(img_dir)[0].split('.')[-1]
 
-mask_dirnames = ['semantic_01_label', 'label_vis', 'inv-depth-01-npy', 'inv-depth-png']
-aug_nums = 10
+mask_dirnames = ['semantic_01_label', 'rock_label_vis', 'inv-depth-png', 'inv-depth-npy']
+aug_nums = 2
 
-with open('/home/ch5225/chaohua/MarsData/Data/rockA+B/train.txt', 'r') as f:
+txt_path = os.path.join(dataset_path, "ImageSets/train.txt")
+
+with open(txt_path, 'r') as f:
     train_lines = f.readlines()
 
 new_img_dir = os.path.join(save_dir, image_dirname)
@@ -87,9 +90,6 @@ for count in range(len(train_lines)):
                 np.save(os.path.join(save_mask_dirname, save_name.replace('.png', '.npy')), transformed_masks[i])
             else:
                 save_png(os.path.join(save_mask_dirnames[i], save_name), cv2.cvtColor(transformed_masks[i], cv2.COLOR_RGB2BGR))
-
-    # for i in range(len(masks)):
-    #     visualize(transformed_image, transformed_masks[i], original_image=image, original_mask=masks[i])
 
     if count % 10 == 0:
         print(count)

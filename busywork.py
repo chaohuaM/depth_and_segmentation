@@ -12,8 +12,8 @@ from PIL import Image
 def normalization(data):
     mi = np.min(data)
     ma = np.max(data)
-    _range = ma
-    return data / _range
+    _range = ma - mi
+    return (data - mi) / _range
 
 
 def save_png(img_path, data):
@@ -94,6 +94,7 @@ def fig2data(fig):
     image = np.asarray(image)
     return image
 
+
 # # 转换深度图
 # file_dir = '/home/ch5225/Desktop/模拟数据/2022-02-02-00-23-59'
 #
@@ -138,70 +139,106 @@ def fig2data(fig):
 #     if count % 100 == 0:
 #         print(count)
 
-'''
-# 将标签中的rgb值转为为0和1
-img_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/JPEGImages'
-label_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/SegmentationClassPNG/'
-new_label_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/label/'
-label_vis_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/label_vis/'
-rock_txt_path = '/home/ch5225/chaohua/Mars-seg data set/MSL/rocks-images.txt'
+# 可视化标签
+# img_dir = 'dataset/oaisys-new/rgb'
+# label_dir = 'dataset/oaisys-new/semantic_01_label/'
+# vis_dir = 'dataset/oaisys-new/semantic_01_label_vis'
+#
+# count = 0
+# for img_path in glob.glob(label_dir+'*.png'):
+#     img_name = img_path.split('/')[-1]
+#
+#     label = cv2.imread(os.path.join(label_dir, img_name), 0)
+#     raw_img = cv2.imread(os.path.join(img_dir, img_name))
+#
+#     vis_img = blend_image(raw_img, label)
+#
+#     save_png(os.path.join(vis_dir, img_name), vis_img)
+#
+#     count += 1
+#
+#     if count % 200 == 0:
+#         print(count)
 
-if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
-if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
 
-color_list = [[128, 0, 0], [0, 128, 0], [128, 128, 0], [0, 0, 128],
-              [128, 0, 128], [0, 128, 128], [128, 128, 128],
-              [64, 0, 0], [192, 0, 0]]
-count = 0
-for img_path in glob.glob(label_dir + '*.png'):
-    img_name = img_path.split('/')[-1]
-    img = cv2.imread(img_path, 1)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    h, w, _ = img.shape
+# # 将标签中的rgb值转为为0和1
+# img_dir = 'dataset/MER/rgb/'
+# label_dir = 'dataset/MER/label/'
+# new_label_dir = 'dataset/MER/semantic_01_label/'
+# label_vis_dir = 'dataset/MER/rock_label_vis/'
+# rock_txt_path = 'dataset/MER/rocks-images.txt'
+#
+# if not os.path.exists(new_label_dir): os.makedirs(new_label_dir)
+# if not os.path.exists(label_vis_dir): os.makedirs(label_vis_dir)
+#
+# # color_list = [[128, 0, 0], [0, 128, 0], [128, 128, 0], [0, 0, 128],
+# #               [128, 0, 128], [0, 128, 128], [128, 128, 128],
+# #               [64, 0, 0], [192, 0, 0]]
+#
+# with open(rock_txt_path, 'r') as f:
+#     lines = f.readlines()
+#
+# count = 0
+# for line in lines:
+#     img_name = line[:-1]
+#     img_path = os.path.join(label_dir, img_name+'.png')
+#
+#     img = cv2.imread(img_path, -1)
+#     # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#     h, w = img.shape
+#
+#     if 4 in img:
+#         count += 1
+#         continue
+#     label = np.zeros([h, w], dtype=np.uint8)
+#     label[img == 5] = 1
+#
+#     save_png(os.path.join(new_label_dir, img_name+'.png'), label)
+#
+#     raw_img = cv2.imread(os.path.join(img_dir, img_name+'.jpg'))
+#
+#     vis_img = blend_image(raw_img, label)
+#
+#     save_png(os.path.join(label_vis_dir, img_name+'.png'), vis_img)
+#
+#     count += 1
+#
+#     if count % 200 == 0:
+#         print(count)
+#
 
-    label = np.zeros([h, w], dtype=np.uint8)
-    for i in range(len(color_list)):
-        class_map = np.equal(img[..., :], color_list[i])
-        class_map = np.all(class_map, axis=-1)
-        label[class_map] = i + 1
-
-    save_png(new_label_dir + '/' + img_name, label)
-
-    raw_img = cv2.imread(img_dir + '/' + img_name.replace('.png', '.jpg'))
-
-    vis_img = cv2.addWeighted(raw_img, 1, cv2.cvtColor(img, cv2.COLOR_RGB2BGR), 0.5, 0)
-
-    save_png(label_vis_dir + '/' + img_name, vis_img)
-
-    count += 1
-
-    if count % 200 == 0:
-        print(count)
-
-    if 5 in np.unique(label):
-        with open(rock_txt_path, 'a') as f:
-            f.write(img_name.replace('.png', '\n'))
-'''
+# 将深度值范围归一化到【0，1】之间
+# img_dir = 'dataset/MER/inv-depth-npy/'
+# new_dir = 'dataset/MER/inv-depth-01-npy/'
+#
+# if not os.path.exists(new_dir): os.makedirs(new_dir)
+#
+# for img_path in glob.glob(img_dir+'*.npy'):
+#     img_name = img_path.split('/')[-1]
+#     depth = np.load(img_path)
+#     new_depth = normalization(depth)
+#
+#     np.save(os.path.join(new_dir, img_name), new_depth)
 
 # 测试dataloader函数
-from torch.utils.data import DataLoader
-from utils.dataloader import RockDataset, rock_dataset_collate, rock_dataset_collate_pl
-
-with open(os.path.join('/home/ch5225/chaohua/Mars-seg-dataset/MER/', "ImageSets/train.txt"), "r") as f:
-    train_lines = f.readlines()[10:30]
-
-input_shape = [256, 256]
-input_channel = 1
-input_shape.append(input_channel)
-num_classes = 10
-data_dir = '/home/ch5225/chaohua/Mars-seg-dataset/MER/'
-train_dataset = RockDataset(train_lines, input_shape, num_classes, 1, data_dir)
-train_dataloader = DataLoader(train_dataset, shuffle=False, batch_size=2, num_workers=1, pin_memory=True,
-                              drop_last=True)
-
-for gen in train_dataloader:
-    a = gen[1].squeeze(1)
-    # g = F.one_hot(gen[1].long().view(-1), num_classes=num_classes)
+# from torch.utils.data import DataLoader
+# from utils.dataloader import RockDataset, rock_dataset_collate, rock_dataset_collate_pl
+#
+# with open(os.path.join('/home/ch5225/chaohua/Mars-seg-dataset/MER/', "ImageSets/train.txt"), "r") as f:
+#     train_lines = f.readlines()[10:30]
+#
+# input_shape = [256, 256]
+# input_channel = 1
+# input_shape.append(input_channel)
+# num_classes = 10
+# data_dir = '/home/ch5225/chaohua/Mars-seg-dataset/MER/'
+# train_dataset = RockDataset(train_lines, input_shape, num_classes, 1, data_dir)
+# train_dataloader = DataLoader(train_dataset, shuffle=False, batch_size=2, num_workers=1, pin_memory=True,
+#                               drop_last=True)
+#
+# for gen in train_dataloader:
+#     a = gen[1].squeeze(1)
+# g = F.one_hot(gen[1].long().view(-1), num_classes=num_classes)
 
 # 测试pytorch-lightning 方式训练
 import pytorch_lightning as pl
@@ -332,16 +369,16 @@ import json
 #     args.__dict__ = json.load(f)
 
 
-# 采用现成方法获得单目深度估计图
+# # 采用现成方法获得单目深度估计图
 # import cv2
 # import torch
 # from predict_model import show_depth
 #
 # import matplotlib.pyplot as plt
 #
-# img_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/JPEGImages/'
-# depth_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/inv-depth-png/'
-# depth_npy_dir = '/home/ch5225/chaohua/Mars-seg data set/MSL/inv-depth-npy/'
+# img_dir = 'dataset/MSL/aug_data/rgb/'
+# depth_dir = 'dataset/MSL/aug_data/inv-depth-png-new/'
+# depth_npy_dir = 'dataset/MSL/aug_data/inv-depth-npy-new/'
 #
 # if not os.path.exists(depth_dir): os.makedirs(depth_dir)
 # if not os.path.exists(depth_npy_dir): os.makedirs(depth_npy_dir)
@@ -365,7 +402,7 @@ import json
 #     transform = midas_transforms.small_transform
 #
 # count = 0
-# for img_path in glob.glob(img_dir + '*.jpg'):
+# for img_path in glob.glob(img_dir + '*.png'):
 #     img_name = img_path.split('/')[-1]
 #     # img_path = '/home/ch5225/chaohua/lunar_rocky_landscape/images/render_clean/render1164.png'
 #     img = cv2.imread(img_path)
@@ -889,38 +926,116 @@ for count in range(len(train_lines)):
     if count % 10 == 0:
         print(count)
 '''
-# 读取.npy 生成特征图
-import imageio
+# # 读取.npy 生成特征图
+# import imageio
+#
+# dsa_map_dir = '525-logs/unet_dual_decoder_with_sa/2022_05_31_22_57_19/dsa_map'
+#
+#
+# epoch = 100
+# batch_id = 1
+# arr_list = ['arr_0', 'arr_1', 'arr_2', 'arr_3', 'arr_4']
+# in_batch_id = 6
+#
+# out_dir = os.path.join(dsa_map_dir, str(batch_id)+'-'+str(in_batch_id))
+# if not os.path.exists(out_dir):
+#     os.mkdir(out_dir)
+#
+# for arr_name in arr_list:
+#     ims = []
+#     for e in range(epoch):
+#         file_tag = 'batch-' + str(batch_id) + '-epoch-' + str(e)
+#         file_name = file_tag + '.npz'
+#         dsa_maps = np.load(os.path.join(dsa_map_dir, file_name))
+#         dsa_mask = dsa_maps[arr_name][in_batch_id]
+#         dsa_mask = dsa_mask.squeeze(0)
+#         fig = plt.figure()
+#         plt.imshow(dsa_mask, cmap='jet')
+#         plt.title('dsa-'+arr_name[-1]+'  epoch: ' + str(e))
+#         plt.colorbar()
+#         plt.savefig(os.path.join(out_dir, file_tag+"-" + ".png"))
+#         plt.close()
+#
+#         im = fig2data(fig)
+#         ims.append(im)
+#
+#     imageio.mimsave(os.path.join(out_dir, 'batch-'+str(batch_id)+'-dsa-'+arr_name[-1]+".gif"), ims, fps=10)
+#     print('batch-'+str(batch_id)+'-dsa-'+arr_name[-1] + '.gif saved!')
 
-dsa_map_dir = '525-logs/unet_dual_decoder_with_sa/2022_05_31_22_57_19/dsa_map'
+# config_path = 'test-logs/unet_dual_decoder_with_sa/2022_06_05_00_11_39/hparams.yaml'
+# ckpt_path = 'test-logs/unet_dual_decoder_with_sa/2022_06_04_20_14_38/checkpoints/epoch=99-val_f1_score=0.927.ckpt'
+#
+# mymodel = MyModel.load_from_checkpoint(checkpoint_path=ckpt_path, hparams_file=config_path)
+#
+# 可视化深度图
+# import matplotlib as mpl
+# import matplotlib.pyplot as plt
+#
+# mpl.use('TkAgg')
+#
+# depth = np.load('/media/sges3d/新加卷/chaohua/Mars-seg/MSL/inv-depth-01-npy/1077_1077MR0047370040600164E01_DXXX.npy')
+#
+# plt.imshow(depth)
+# plt.show()
 
+# 测试 compute_mIou 函数
+# from utils.utils_metrics import compute_mIoU
+#
+# gt_dir = '/media/sges3d/新加卷/chaohua/Mars-seg/MER/semantic_01_label/'
+# pred_dir = '/media/sges3d/新加卷/chaohua/Mars-seg/MER/MER-logs/unet/2022_06_08_17_28_36/epoch=100-val_f1_score=0.615/val/detection-results/'
+#
+# image_ids = [x[:-4] for x in os.listdir(pred_dir)]
+#
+# num_classes = 2
+# name_classes = ['Non-rock', 'Rock']
+# hist, IoUs, PA_Recall, Precision, Fscore = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes, name_classes)
 
-epoch = 100
-batch_id = 1
-arr_list = ['arr_0', 'arr_1', 'arr_2', 'arr_3', 'arr_4']
-in_batch_id = 6
+# 复制文件
+# import glob
+# import shutil
+#
+# img_dir = 'dataset/MSL/rgb/'
+# depth_dir = 'dataset/MSL/inv-depth-npy/'
+# label_dir = 'dataset/MSL/semantic_01_label/'
+#
+# new_img_dir = 'dataset/MSL/aug_data/rgb/'
+# new_depth_dir = 'dataset/MSL/aug_data/inv-depth-npy/'
+# new_label_dir = 'dataset/MSL/aug_data/semantic_01_label/'
+#
+#
+# for img in os.listdir(label_dir):
+#     img_name = img[:-4]
+#
+#     shutil.copyfile(img_dir+img_name+'.jpg', new_img_dir+img_name+'.png')
+#     shutil.copyfile(depth_dir + img_name + '.npy', new_depth_dir + img_name + '.npy')
+#     shutil.copyfile(label_dir+img_name+'.png', new_label_dir+img_name+'.png')
 
-out_dir = os.path.join(dsa_map_dir, str(batch_id)+'-'+str(in_batch_id))
-if not os.path.exists(out_dir):
-    os.mkdir(out_dir)
+# min_d = 1000000
+# max_d = -1000000
+# depth_dir = 'dataset/MSL/inv-depth-npy'
+# depth_names = os.listdir(depth_dir)
+# for depth_name in depth_names:
+#     depth_path = os.path.join(depth_dir, depth_name)
+#     depth = np.load(depth_path)
+#
+#     min_depth = depth.min()
+#     max_depth = depth.max()
+#     if min_depth < min_d:
+#         min_d = min_depth
+#         print(min_d)
+#
+#     if max_depth > max_d:
+#         max_d = max_depth
+#         print(max_depth)
 
-for arr_name in arr_list:
-    ims = []
-    for e in range(epoch):
-        file_tag = 'batch-' + str(batch_id) + '-epoch-' + str(e)
-        file_name = file_tag + '.npy.npz'
-        dsa_maps = np.load(os.path.join(dsa_map_dir, file_name))
-        dsa_mask = dsa_maps[arr_name][in_batch_id]
-        dsa_mask = dsa_mask.squeeze(0)
-        fig = plt.figure()
-        plt.imshow(dsa_mask, cmap='jet')
-        plt.title('dsa-'+arr_name[-1]+'  epoch: ' + str(e))
-        plt.colorbar()
-        plt.savefig(os.path.join(out_dir, file_tag+"-" + ".png"))
-        plt.close()
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+depth_path = '/media/sges3d/新加卷/chaohua/Mars-seg/MSL/inv-depth-npy/1454_1454MR0071890100703269E01_DXXX.npy'
 
-        im = fig2data(fig)
-        ims.append(im)
+depth = np.load(depth_path)
+# depth = (depth - depth.mean()) / depth.var()
+depth = normalization(depth)
 
-    imageio.mimsave(os.path.join(out_dir, 'batch-'+str(batch_id)+'-dsa-'+arr_name[-1]+".gif"), ims, fps=10)
-    print('batch-'+str(batch_id)+'-dsa-'+arr_name[-1] + '.gif saved!')
+plt.imshow(depth)
+plt.show()

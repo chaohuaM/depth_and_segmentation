@@ -83,9 +83,12 @@ class MyModel(pl.LightningModule):
         else:
             self.depth_loss = None
 
-        self.f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5, average=None)
+        self.train_f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5, average=None)
+        self.val_f1_score = torchmetrics.F1Score(num_classes=num_classes, threshold=0.5, average=None)
+
         # self.iou = torchmetrics.IoU(num_classes=num_classes+1, threshold=0.5)
-        self.iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
+        self.train_iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
+        self.val_iou = torchmetrics.JaccardIndex(num_classes=num_classes + 1, threshold=0.5)
 
     def forward(self, image):
         output = self.model(image)
@@ -135,6 +138,8 @@ class MyModel(pl.LightningModule):
 
             depth_loss = self.depth_loss_factor * self.depth_loss(depth_output, depths, depth_masks)
             self.log(f"{stage}_depth_loss", depth_loss, prog_bar=True, logger=True, on_epoch=True)
+            self.log("depth_loss_factor_0", self.depth_loss.awl.params[0].item(), prog_bar=True, logger=True, on_step=False, on_epoch=True)
+            self.log("depth_loss_factor_1", self.depth_loss.awl.params[1].item(), prog_bar=True, logger=True, on_step=False, on_epoch=True)
 
         total_loss = sem_loss + depth_loss
 
@@ -142,7 +147,7 @@ class MyModel(pl.LightningModule):
             if 'sa' in self.model_name:
                 sa_maps = [x.cpu().numpy() for x in outputs[2]]
                 sa_map_npy_path = os.path.join(self.sa_map_dir, "batch-" + str(batch_idx) + "-epoch-" + str(
-                    self.current_epoch) + ".npy")
+                    self.current_epoch) + ".npz")
                 np.savez(sa_map_npy_path, *sa_maps)
                 if batch_idx % 10 == 0:
                     for idx, sa_map in enumerate(sa_maps):
@@ -153,11 +158,13 @@ class MyModel(pl.LightningModule):
                         # plt.axis('off')
                         self.logger.experiment.add_figure(str(batch_idx)+"-sa-map-"+str(idx), fig, global_step=self.current_epoch)
 
-        self.f1_score(sem_outputs.view(-1), masks.view(-1))
-        self.iou(sem_outputs.view(-1), masks.view(-1))
+        if stage == 'train':
+            self.train_f1_score.update(sem_outputs.view(-1), masks.view(-1))
+            self.train_iou.update(sem_outputs.view(-1), masks.view(-1))
 
-        self.log(f"{stage}_f1_score", self.f1_score, logger=True)
-        self.log(f"{stage}_iou", self.iou, logger=True)
+        if stage == 'val':
+            self.val_f1_score.update(sem_outputs.view(-1), masks.view(-1))
+            self.val_iou.update(sem_outputs.view(-1), masks.view(-1))
 
         return total_loss
 
@@ -168,9 +175,19 @@ class MyModel(pl.LightningModule):
         #
         # self.log(f"{stage}_f1_score", self.f1_score, logger=True)
         # self.log(f"{stage}_iou", self.iou, logger=True)
-        
-        self.iou.reset()
-        self.f1_score.reset()
+        if stage == 'train':
+            self.log(f"{stage}_f1_score", self.train_f1_score.compute(), logger=True)
+            self.log(f"{stage}_iou", self.train_iou.compute(), logger=True)
+
+            self.train_iou.reset()
+            self.train_f1_score.reset()
+
+        if stage == 'val':
+            self.log(f"{stage}_f1_score", self.val_f1_score.compute(), logger=True)
+            self.log(f"{stage}_iou", self.val_iou.compute(), logger=True)
+
+            self.val_iou.reset()
+            self.val_f1_score.reset()
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, batch_idx, "train")
@@ -191,9 +208,13 @@ class MyModel(pl.LightningModule):
         return self.shared_epoch_end(outputs, "test")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        if self.hparams.optimizer.lower() == 'adam':
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        if self.hparams.optimizer.lower() == 'sgd':
+            optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.lr)
+        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda i: 1)
         # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.75)
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
         return [optimizer], [lr_scheduler]
 
     @staticmethod
@@ -229,6 +250,8 @@ class MyModel(pl.LightningModule):
                             help='freeze batch size of image in training')
         parser.add_argument('--lr', default=0.1, type=float, required=False,
                             help='learning rate of the optimizer')
+        parser.add_argument('--optimizer', default='Adam', type=str, required=False,
+                            help='choose which type of optimizer to be used')
 
         return parent_parser
 
