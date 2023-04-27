@@ -120,7 +120,7 @@ class UnetDecoder(nn.Module):
         outputs = []
         for i, decoder_block in enumerate(self.blocks):
             skip = skips[i] if i < len(skips) else None
-            attention_map = attention_maps[i] if attention_maps else None
+            attention_map = attention_maps[i] if attention_maps and i < len(attention_maps) else None
             x = decoder_block(x, skip, attention_map)
             outputs.append(x)
 
@@ -130,11 +130,11 @@ class UnetDecoder(nn.Module):
 class UnetDualDecoder(nn.Module):
     def __init__(self, in_channels=3, num_classes=2, encoder_name='resnet18',
                  decoder_channels: List[int] = (256, 128, 64, 32, 16),
-                 with_spatial_attention=False):
+                 num_sa_blocks=0):
 
         super(UnetDualDecoder, self).__init__()
 
-        self.with_spatial_attention = with_spatial_attention
+        self.num_sa_blocks = num_sa_blocks
 
         self.encoder = smp.encoders.get_encoder(name=encoder_name, in_channels=in_channels)
 
@@ -144,9 +144,9 @@ class UnetDualDecoder(nn.Module):
         self.decoder2 = UnetDecoder(encoder_channels=self.encoder.out_channels,
                                     decoder_channels=decoder_channels)
 
-        if self.with_spatial_attention:
+        if self.num_sa_blocks > 0:
             sa_blocks = [
-                SpatialAttentionModule(in_ch) for in_ch in decoder_channels
+                SpatialAttentionModule(in_ch) for in_ch in decoder_channels[:num_sa_blocks]
             ]
             self.sa_blocks = nn.ModuleList(sa_blocks)
 
@@ -164,7 +164,7 @@ class UnetDualDecoder(nn.Module):
 
         sa_maps = None
 
-        if self.with_spatial_attention:
+        if self.num_sa_blocks > 0:
             sa_maps = []
             for i, sa_block in enumerate(self.sa_blocks):
                 sa_map = sa_block(outputs2[i])
@@ -184,7 +184,7 @@ def unet_dual_decoder(in_channels=3, num_classes=2, encoder_name='resnet18'):
 
 
 def unet_dual_decoder_with_sa(in_channels=3, num_classes=2, encoder_name='resnet18'):
-    return UnetDualDecoder(in_channels, num_classes, encoder_name, with_spatial_attention=True)
+    return UnetDualDecoder(in_channels, num_classes, encoder_name, num_sa_blocks=3)
 
 
 if __name__ == '__main__':
@@ -193,12 +193,21 @@ if __name__ == '__main__':
     from torchsummary import summary
 
     x = torch.zeros(2, 3, 512, 512)
-    net = unet_dual_decoder_with_sa(encoder_name='resnet50')
+    net = unet_dual_decoder_with_sa(in_channels=3, num_classes=1, encoder_name='resnet50')
     net.eval()
-    o1, o2, sa_maps = net(x)
+    o1, o2, o3, o4, o5, o6 = net.encoder(x)
+    d1, d2, d3, d4, d5 = net.decoder1(*[o1, o2, o3, o4, o5, o6])
     print(o1.shape)
     print(o2.shape)
-    print(len(sa_maps))
+    print(o6.shape)
+
+    print(d1.shape)
+    print(d2.shape)
+    print(d5.shape)
+
+    output = net(x)
+    print(len(output[2]))
+
     # summary(net.to('cuda'), (3, 512, 512))
 
     # for param in net.sa_blocks[3].conv.parameters():
